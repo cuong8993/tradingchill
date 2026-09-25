@@ -1,3 +1,5 @@
+export type ExtendedSession = 'pre' | 'post' | null;
+
 export type Quote = {
   symbol: string;
   price: number;
@@ -8,6 +10,12 @@ export type Quote = {
   open: number;
   previousClose: number;
   timestamp: number;
+  marketState?: string | null;
+  regularClose?: number | null;
+  extendedPrice?: number | null;
+  extendedSession?: ExtendedSession;
+  preMarketPrice?: number | null;
+  postMarketPrice?: number | null;
 };
 
 export type Candle = {
@@ -49,6 +57,12 @@ export type IndicatorSettings = {
   stochastic14: boolean;
   atr14: boolean;
   volume: boolean;
+};
+
+export type VolumeMASettings = {
+  type: 'SMA' | 'EMA';
+  length: number;
+  color: string;
 };
 
 export type AlertDirection = 'above' | 'below';
