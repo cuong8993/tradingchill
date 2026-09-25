@@ -26,8 +26,14 @@ type Props = {
 type Point={time:number;value:number};
 
 const asTime = (n: number) => n as UTCTimestamp;
-const safeWidth = (el: HTMLElement) => Math.max(320, Math.floor(el.clientWidth || el.getBoundingClientRect().width || 320));
-const safeHeight = (el: HTMLElement) => Math.max(260, Math.floor(el.clientHeight || el.getBoundingClientRect().height || 260));
+const safeWidth = (el: HTMLElement) => {
+  const measured=Math.floor(el.clientWidth || el.getBoundingClientRect().width || 0);
+  return measured>0?Math.max(280,measured):320;
+};
+const safeHeight = (el: HTMLElement) => {
+  const measured=Math.floor(el.clientHeight || el.getBoundingClientRect().height || 0);
+  return measured>0?Math.max(120,measured):260;
+};
 
 function volumeMovingAverage(candles:Candle[],settings:VolumeMASettings):Point[]{
   const period=Math.max(1,Math.round(settings.length));
@@ -55,8 +61,45 @@ function volumeMovingAverage(candles:Candle[],settings:VolumeMASettings):Point[]
   return out;
 }
 
+function addQuoteLines(price:any,quote?:Quote){
+  const lines:any[]=[];
+  if(!quote)return lines;
+
+  const state=(quote.marketState||'').toUpperCase();
+  const add=(value:number|undefined|null,title:string,color:string,width:1|2=1)=>{
+    if(!Number.isFinite(value))return;
+    lines.push(price.createPriceLine({
+      price:value as number,
+      color,
+      lineWidth:width,
+      lineStyle:LineStyle.Dashed,
+      axisLabelVisible:true,
+      title,
+    }));
+  };
+
+  if(state==='REGULAR'){
+    add(quote.price,'LIVE','#22c58b');
+  }else if(state==='PRE'||state.includes('POST')||state==='CLOSED'){
+    add(quote.regularClose??quote.price,'CLOSE','#aeb9ca');
+    if(quote.extendedSession==='pre')add(quote.extendedPrice,'PRE','#5ec8e5',2);
+    if(quote.extendedSession==='post')add(quote.extendedPrice,'POST','#b98cff',2);
+  }else{
+    add(quote.price,'LAST','#aeb9ca');
+    if(quote.extendedSession==='pre')add(quote.extendedPrice,'PRE','#5ec8e5',2);
+    if(quote.extendedSession==='post')add(quote.extendedPrice,'POST','#b98cff',2);
+  }
+
+  return lines;
+}
+
 export default function MarketChart({ candles, quote, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings }: Props) {
   const host = useRef<HTMLDivElement>(null);
+  const chartRef=useRef<ReturnType<typeof createChart>|null>(null);
+  const priceRef=useRef<any>(null);
+  const quoteLinesRef=useRef<any[]>([]);
+  const quoteRef=useRef<Quote|undefined>(quote);
+  quoteRef.current=quote;
 
   useEffect(() => {
     if (!host.current || !candles.length) return;
@@ -103,6 +146,9 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
       lastValueVisible: true,
     });
 
+    chartRef.current=chart;
+    priceRef.current=price;
+
     price.setData(candles.map(c => ({
       time: asTime(c.time),
       open: c.open,
@@ -111,49 +157,14 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
       close: c.close,
     })));
 
-    const state=(quote?.marketState||'').toUpperCase();
-    const regularSession=state==='REGULAR'||!state;
-
-    if(regularSession&&Number.isFinite(quote?.price)){
-      price.createPriceLine({
-        price: quote?.price as number,
-        color: '#22c58b',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: 'LIVE',
-      });
-    }else{
-      const closePrice=quote?.regularClose??quote?.price;
-      if(Number.isFinite(closePrice)){
-        price.createPriceLine({
-          price: closePrice as number,
-          color: '#aeb9ca',
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: 'CLOSE',
-        });
-      }
-
-      if(Number.isFinite(quote?.extendedPrice)){
-        const session=quote?.extendedSession==='pre'?'PRE':quote?.extendedSession==='post'?'POST':'EXT';
-        price.createPriceLine({
-          price: quote?.extendedPrice as number,
-          color: quote?.extendedSession==='pre'?'#5ec8e5':'#b98cff',
-          lineWidth: 2,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: session,
-        });
-      }
-    }
+    quoteLinesRef.current=addQuoteLines(price,quoteRef.current);
 
     let nextPane = 1;
     let volumePaneIndex:number|null=null;
 
     if (indicators.volume) {
       volumePaneIndex=nextPane++;
+
       const volume = chart.addSeries(HistogramSeries, {
         priceFormat: { type: 'volume' },
         priceScaleId: '',
@@ -257,7 +268,14 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
     fitAll();
 
     const handleDoubleClick=(param:any)=>{
-      if(volumePaneIndex==null||!param?.point)return;
+      if(volumePaneIndex==null)return;
+
+      if(typeof param?.paneIndex==='number'){
+        if(param.paneIndex===volumePaneIndex)onVolumeSettings();
+        return;
+      }
+
+      if(!param?.point)return;
       const panes=chart.panes();
       let top=0;
       for(const pane of panes){
@@ -291,9 +309,29 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
       observer.disconnect();
       window.removeEventListener('orientationchange', resizeChart);
       window.visualViewport?.removeEventListener('resize', resizeChart);
+      chartRef.current=null;
+      priceRef.current=null;
+      quoteLinesRef.current=[];
       chart.remove();
     };
-  }, [candles, quote, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings]);
+  }, [candles, indicators, alerts, volumeMA, logScale, onVolumeSettings]);
+
+  useEffect(()=>{
+    const price=priceRef.current;
+    if(!price)return;
+
+    for(const line of quoteLinesRef.current){
+      try{price.removePriceLine(line);}catch{}
+    }
+    quoteLinesRef.current=addQuoteLines(price,quote);
+  },[quote?.price,quote?.regularClose,quote?.extendedPrice,quote?.extendedSession,quote?.marketState]);
+
+  useEffect(()=>{
+    const chart=chartRef.current;
+    if(!chart)return;
+    chart.timeScale().fitContent();
+    chart.priceScale('right').setAutoScale(true);
+  },[fitSignal]);
 
   return <div ref={host} className="chart-host" />;
 }
