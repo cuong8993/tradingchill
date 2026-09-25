@@ -1,4 +1,4 @@
-import type { Candle, PriceAlert, Quote, SearchResult } from '../types';
+import type { CandleResponse, PriceAlert, Quote, SearchResult } from '../types';
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -15,7 +15,7 @@ export const api = {
   quote: (symbol: string) => json<Quote>(`/api/quote?symbol=${encodeURIComponent(symbol)}`),
   quotes: (symbols: string[]) => json<Quote[]>(`/api/quotes?symbols=${encodeURIComponent(symbols.join(','))}`),
   candles: (symbol: string, resolution: string, from: number, to: number) =>
-    json<Candle[]>(`/api/candles?symbol=${encodeURIComponent(symbol)}&resolution=${encodeURIComponent(resolution)}&from=${from}&to=${to}`),
+    json<CandleResponse>(`/api/candles?symbol=${encodeURIComponent(symbol)}&resolution=${encodeURIComponent(resolution)}&from=${from}&to=${to}`),
   alerts: () => json<PriceAlert[]>('/api/alerts'),
   createAlert: (body: { symbol: string; direction: 'above' | 'below'; target: number; note?: string }) =>
     json<PriceAlert>('/api/alerts', {
