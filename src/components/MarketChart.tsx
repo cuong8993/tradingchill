@@ -177,7 +177,7 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
       })));
 
       const volumeMAData=volumeMovingAverage(candles,volumeMA);
-      if(volumeMAData.length){
+      if(volumeMA.enabled&&volumeMAData.length){
         const volumeLine=chart.addSeries(LineSeries,{
           color:volumeMA.color,
           lineWidth:2,
