@@ -5,29 +5,63 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  PriceScaleMode,
   createChart,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import type { Candle, IndicatorSettings, PriceAlert } from '../types';
+import type { Candle, IndicatorSettings, PriceAlert, Quote, VolumeMASettings } from '../types';
 import { atr, bollinger, ema, macd, rsi, sma, stochastic, vwap } from '../lib/indicators';
 
 type Props = {
   candles: Candle[];
-  livePrice?: number;
+  quote?: Quote;
   indicators: IndicatorSettings;
   alerts: PriceAlert[];
+  volumeMA: VolumeMASettings;
+  fitSignal: number;
+  logScale: boolean;
+  onVolumeSettings: () => void;
 };
+
+type Point={time:number;value:number};
 
 const asTime = (n: number) => n as UTCTimestamp;
 const safeWidth = (el: HTMLElement) => Math.max(320, Math.floor(el.clientWidth || el.getBoundingClientRect().width || 320));
 const safeHeight = (el: HTMLElement) => Math.max(260, Math.floor(el.clientHeight || el.getBoundingClientRect().height || 260));
 
-export default function MarketChart({ candles, livePrice, indicators, alerts }: Props) {
+function volumeMovingAverage(candles:Candle[],settings:VolumeMASettings):Point[]{
+  const period=Math.max(1,Math.round(settings.length));
+  if(candles.length<period)return [];
+
+  if(settings.type==='EMA'){
+    const out:Point[]=[];
+    const k=2/(period+1);
+    let previous=candles.slice(0,period).reduce((sum,c)=>sum+c.volume,0)/period;
+    out.push({time:candles[period-1].time,value:previous});
+    for(let i=period;i<candles.length;i++){
+      previous=candles[i].volume*k+previous*(1-k);
+      out.push({time:candles[i].time,value:previous});
+    }
+    return out;
+  }
+
+  const out:Point[]=[];
+  let sum=0;
+  for(let i=0;i<candles.length;i++){
+    sum+=candles[i].volume;
+    if(i>=period)sum-=candles[i-period].volume;
+    if(i>=period-1)out.push({time:candles[i].time,value:sum/period});
+  }
+  return out;
+}
+
+export default function MarketChart({ candles, quote, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings }: Props) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!host.current || !candles.length) return;
     const el = host.current;
+
     const chart = createChart(el, {
       width: safeWidth(el),
       height: safeHeight(el),
@@ -50,7 +84,11 @@ export default function MarketChart({ candles, livePrice, indicators, alerts }: 
         vertLine: { color: '#5d6b82', labelBackgroundColor: '#273247' },
         horzLine: { color: '#5d6b82', labelBackgroundColor: '#273247' },
       },
-      rightPriceScale: { borderColor: '#202938' },
+      rightPriceScale: {
+        borderColor: '#202938',
+        mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+        autoScale: true,
+      },
       timeScale: { borderColor: '#202938', timeVisible: true, secondsVisible: false },
     });
 
@@ -66,35 +104,81 @@ export default function MarketChart({ candles, livePrice, indicators, alerts }: 
     });
 
     price.setData(candles.map(c => ({
-      time: asTime(c.time), open: c.open, high: c.high, low: c.low, close: c.close,
+      time: asTime(c.time),
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
     })));
 
-    if (Number.isFinite(livePrice)) {
+    const state=(quote?.marketState||'').toUpperCase();
+    const regularSession=state==='REGULAR'||!state;
+
+    if(regularSession&&Number.isFinite(quote?.price)){
       price.createPriceLine({
-        price: livePrice as number,
+        price: quote?.price as number,
         color: '#22c58b',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
         title: 'LIVE',
       });
+    }else{
+      const closePrice=quote?.regularClose??quote?.price;
+      if(Number.isFinite(closePrice)){
+        price.createPriceLine({
+          price: closePrice as number,
+          color: '#aeb9ca',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'CLOSE',
+        });
+      }
+
+      if(Number.isFinite(quote?.extendedPrice)){
+        const session=quote?.extendedSession==='pre'?'PRE':quote?.extendedSession==='post'?'POST':'EXT';
+        price.createPriceLine({
+          price: quote?.extendedPrice as number,
+          color: quote?.extendedSession==='pre'?'#5ec8e5':'#b98cff',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: session,
+        });
+      }
     }
 
     let nextPane = 1;
+    let volumePaneIndex:number|null=null;
 
     if (indicators.volume) {
+      volumePaneIndex=nextPane++;
       const volume = chart.addSeries(HistogramSeries, {
         priceFormat: { type: 'volume' },
         priceScaleId: '',
-      }, nextPane++);
+      }, volumePaneIndex);
+
       volume.setData(candles.map(c => ({
         time: asTime(c.time),
         value: c.volume,
         color: c.close >= c.open ? 'rgba(34,197,139,.5)' : 'rgba(244,91,105,.5)',
       })));
+
+      const volumeMAData=volumeMovingAverage(candles,volumeMA);
+      if(volumeMAData.length){
+        const volumeLine=chart.addSeries(LineSeries,{
+          color:volumeMA.color,
+          lineWidth:2,
+          priceScaleId:'',
+          priceLineVisible:false,
+          lastValueVisible:false,
+        },volumePaneIndex);
+        volumeLine.setData(volumeMAData.map(p=>({time:asTime(p.time),value:p.value})));
+      }
     }
 
-    const addLine = (data: { time: number; value: number }[], color: string, width = 1, pane = 0, style = LineStyle.Solid) => {
+    const addLine = (data: Point[], color: string, width = 1, pane = 0, style = LineStyle.Solid) => {
       const series = chart.addSeries(LineSeries, {
         color,
         lineWidth: width as 1 | 2 | 3 | 4,
@@ -165,7 +249,28 @@ export default function MarketChart({ candles, livePrice, indicators, alerts }: 
       });
     });
 
-    chart.timeScale().fitContent();
+    const fitAll=()=>{
+      chart.timeScale().fitContent();
+      chart.priceScale('right').setAutoScale(true);
+    };
+
+    fitAll();
+
+    const handleDoubleClick=(param:any)=>{
+      if(volumePaneIndex==null||!param?.point)return;
+      const panes=chart.panes();
+      let top=0;
+      for(const pane of panes){
+        const height=pane.getHeight();
+        if(pane.paneIndex()===volumePaneIndex&&param.point.y>=top&&param.point.y<=top+height){
+          onVolumeSettings();
+          return;
+        }
+        top+=height;
+      }
+    };
+
+    chart.subscribeDblClick(handleDoubleClick);
 
     const resizeChart = () => {
       chart.applyOptions({ width: safeWidth(el), height: safeHeight(el) });
@@ -178,16 +283,17 @@ export default function MarketChart({ candles, livePrice, indicators, alerts }: 
 
     requestAnimationFrame(() => {
       resizeChart();
-      chart.timeScale().fitContent();
+      fitAll();
     });
 
     return () => {
+      chart.unsubscribeDblClick(handleDoubleClick);
       observer.disconnect();
       window.removeEventListener('orientationchange', resizeChart);
       window.visualViewport?.removeEventListener('resize', resizeChart);
       chart.remove();
     };
-  }, [candles, livePrice, indicators, alerts]);
+  }, [candles, quote, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings]);
 
   return <div ref={host} className="chart-host" />;
 }
