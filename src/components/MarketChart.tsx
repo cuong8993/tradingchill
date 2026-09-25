@@ -18,6 +18,8 @@ type Props = {
 };
 
 const asTime = (n: number) => n as UTCTimestamp;
+const safeWidth = (el: HTMLElement) => Math.max(320, Math.floor(el.clientWidth || el.getBoundingClientRect().width || 320));
+const safeHeight = (el: HTMLElement) => Math.max(260, Math.floor(el.clientHeight || el.getBoundingClientRect().height || 260));
 
 export default function MarketChart({ candles, indicators, alerts }: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -26,8 +28,8 @@ export default function MarketChart({ candles, indicators, alerts }: Props) {
     if (!host.current || !candles.length) return;
     const el = host.current;
     const chart = createChart(el, {
-      width: el.clientWidth,
-      height: el.clientHeight,
+      width: safeWidth(el),
+      height: safeHeight(el),
       layout: {
         background: { type: ColorType.Solid, color: '#0c111b' },
         textColor: '#8f9bad',
@@ -151,14 +153,25 @@ export default function MarketChart({ candles, indicators, alerts }: Props) {
     });
 
     chart.timeScale().fitContent();
-    const observer = new ResizeObserver(entries => {
-      const rect = entries[0]?.contentRect;
-      if (rect) chart.applyOptions({ width: rect.width, height: rect.height });
-    });
+
+    const resizeChart = () => {
+      chart.applyOptions({ width: safeWidth(el), height: safeHeight(el) });
+    };
+
+    const observer = new ResizeObserver(resizeChart);
     observer.observe(el);
+    window.addEventListener('orientationchange', resizeChart);
+    window.visualViewport?.addEventListener('resize', resizeChart);
+
+    requestAnimationFrame(() => {
+      resizeChart();
+      chart.timeScale().fitContent();
+    });
 
     return () => {
       observer.disconnect();
+      window.removeEventListener('orientationchange', resizeChart);
+      window.visualViewport?.removeEventListener('resize', resizeChart);
       chart.remove();
     };
   }, [candles, indicators, alerts]);
