@@ -6,11 +6,6 @@ const YAHOO_CHART_HOSTS=[
   'https://query1.finance.yahoo.com/v8/finance/chart',
   'https://query2.finance.yahoo.com/v8/finance/chart',
 ];
-const YAHOO_QUOTE_HOSTS=[
-  'https://query1.finance.yahoo.com/v7/finance/quote',
-  'https://query2.finance.yahoo.com/v7/finance/quote',
-];
-
 async function finnhub<T>(env:Env,path:string,params:Record<string,string|number>):Promise<T>{
   if(!env.FINNHUB_API_KEY)throw new Error('FINNHUB_API_KEY is not configured.');
   const url=new URL(FINNHUB+path);
@@ -31,15 +26,37 @@ type YahooQuote={
   postMarketPrice?:number;
 };
 
-async function yahooExtendedQuotes(symbols:string[]):Promise<Map<string,YahooQuote>>{
-  if(!symbols.length)return new Map();
+type TradingPeriod={start?:number;end?:number};
+
+function lastCloseInPeriod(
+  timestamps:number[],
+  closes:Array<number|null|undefined>,
+  period:TradingPeriod|undefined,
+  now:number,
+){
+  if(!period?.start||!period?.end)return null;
+  let value:number|null=null;
+  for(let i=0;i<timestamps.length;i++){
+    const time=timestamps[i];
+    const close=closes[i];
+    if(time>=period.start&&time<=period.end&&time<=now&&close!=null&&Number.isFinite(close)){
+      value=close;
+    }
+  }
+  return value;
+}
+
+async function yahooExtendedForSymbol(symbol:string):Promise<YahooQuote>{
   let lastError:unknown;
 
-  for(const host of YAHOO_QUOTE_HOSTS){
+  for(const host of YAHOO_CHART_HOSTS){
     try{
-      const url=new URL(host);
-      url.searchParams.set('symbols',symbols.join(','));
-      url.searchParams.set('formatted','false');
+      const url=new URL(`${host}/${encodeURIComponent(symbol)}`);
+      url.searchParams.set('range','1d');
+      url.searchParams.set('interval','1m');
+      url.searchParams.set('includePrePost','true');
+      url.searchParams.set('events','div,splits');
+
       const response=await fetch(url,{
         headers:{
           'accept':'application/json,text/plain,*/*',
@@ -47,21 +64,68 @@ async function yahooExtendedQuotes(symbols:string[]):Promise<Map<string,YahooQuo
         },
       });
       if(response.status===429)throw new Error('Yahoo Finance extended-hours rate limit reached.');
-      if(!response.ok)throw new Error(`Yahoo Finance quote service returned ${response.status}.`);
+      if(!response.ok)throw new Error(`Yahoo Finance chart service returned ${response.status}.`);
 
-      const data=await response.json() as {quoteResponse?:{result?:YahooQuote[]}};
-      const map=new Map<string,YahooQuote>();
-      for(const row of data.quoteResponse?.result||[]){
-        if(row.symbol)map.set(row.symbol.toUpperCase(),row);
-      }
-      return map;
+      const data=await response.json() as {
+        chart?:{
+          error?:{description?:string}|null;
+          result?:Array<{
+            meta?:{
+              symbol?:string;
+              regularMarketPrice?:number;
+              previousClose?:number;
+              chartPreviousClose?:number;
+              currentTradingPeriod?:{
+                pre?:TradingPeriod;
+                regular?:TradingPeriod;
+                post?:TradingPeriod;
+              };
+            };
+            timestamp?:number[];
+            indicators?:{quote?:Array<{close?:Array<number|null>}>};
+          }>;
+        };
+      };
+
+      if(data.chart?.error)throw new Error(data.chart.error.description||'Yahoo Finance extended-hours data unavailable.');
+      const result=data.chart?.result?.[0];
+      const meta=result?.meta;
+      if(!meta)throw new Error('Yahoo Finance extended-hours metadata unavailable.');
+
+      const now=Math.floor(Date.now()/1000);
+      const periods=meta.currentTradingPeriod||{};
+      const timestamps=result?.timestamp||[];
+      const closes=result?.indicators?.quote?.[0]?.close||[];
+
+      const inPeriod=(period?:TradingPeriod)=>Boolean(period?.start&&period?.end&&now>=period.start&&now<=period.end);
+      const state=inPeriod(periods.pre)?'PRE':inPeriod(periods.regular)?'REGULAR':inPeriod(periods.post)?'POST':'CLOSED';
+
+      return{
+        symbol:(meta.symbol||symbol).toUpperCase(),
+        marketState:state,
+        regularMarketPrice:Number.isFinite(meta.regularMarketPrice)?meta.regularMarketPrice:undefined,
+        regularMarketPreviousClose:Number.isFinite(meta.previousClose)?meta.previousClose:meta.chartPreviousClose,
+        preMarketPrice:lastCloseInPeriod(timestamps,closes,periods.pre,now)??undefined,
+        postMarketPrice:lastCloseInPeriod(timestamps,closes,periods.post,now)??undefined,
+      };
     }catch(error){
       lastError=error;
     }
   }
 
-  if(lastError)console.warn('Extended-hours quote enrichment unavailable',lastError);
-  return new Map();
+  throw lastError instanceof Error?lastError:new Error('Yahoo Finance extended-hours data unavailable.');
+}
+
+async function yahooExtendedQuotes(symbols:string[]):Promise<Map<string,YahooQuote>>{
+  const results=await Promise.allSettled(symbols.map(yahooExtendedForSymbol));
+  const map=new Map<string,YahooQuote>();
+
+  for(const result of results){
+    if(result.status==='fulfilled'&&result.value.symbol){
+      map.set(result.value.symbol.toUpperCase(),result.value);
+    }
+  }
+  return map;
 }
 
 async function finnhubQuote(env:Env,symbol:string):Promise<Quote>{
