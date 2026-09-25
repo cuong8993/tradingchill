@@ -29,8 +29,11 @@
   .instrument-avatar{width:31px;height:31px;flex-basis:31px}
   .quote{margin-left:auto;min-width:0}
   .quote strong{font-size:20px}
-  .toolbar{overflow-x:auto;overflow-y:visible;padding:0 7px;scrollbar-width:none}
-  .toolbar::-webkit-scrollbar{display:none}
+  .toolbar{overflow:visible;padding:0 7px;gap:6px}
+  .chart-fixed-tools{padding-right:6px;gap:4px}
+  .chart-key-button{width:30px;height:30px;flex:0 0 30px}
+  .toolbar-scroll{overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+  .toolbar-scroll::-webkit-scrollbar{display:none}
   .timeframes{flex:0 0 auto}
   .tool{flex:0 0 auto}
   .chart-card{min-height:0;height:100%;overflow:hidden}
@@ -55,7 +58,6 @@
   .workspace{grid-template-rows:68px 43px minmax(0,1fr) 26px}
   .market-head{gap:8px}
   .quote strong{font-size:18px}
-  .chart-key span{display:none}
 }
 
 @media(max-height:820px) and (min-width:851px){
