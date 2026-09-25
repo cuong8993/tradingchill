@@ -2,5 +2,6 @@
 @import './base.css';
 @import './watchlist.css';
 @import './workspace.css';
+@import './dropdown.css';
 @import './overlays.css';
 @import './responsive.css';
