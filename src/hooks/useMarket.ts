@@ -6,11 +6,11 @@ import type { Candle, CandleSource, Quote, SearchResult, Timeframe } from '../ty
 export function useMarket(watchlist:string[], selected:string, timeframe:Timeframe){
   const [quotes,setQuotes]=useState<Record<string,Quote>>({});
   const [candles,setCandles]=useState<Candle[]>([]);
-  const [chartSource,setChartSource]=useState<CandleSource>('demo');
+  const [chartSource,setChartSource]=useState<CandleSource>('yahoo');
   const [chartNote,setChartNote]=useState('');
   const [chartLoading,setChartLoading]=useState(true);
   const [chartError,setChartError]=useState('');
-  const [config,setConfig]=useState<{mode:'live'|'demo';database:boolean}>({mode:'demo',database:false});
+  const [config,setConfig]=useState<{mode:'live'|'offline';chartProvider:'twelvedata'|'yahoo';database:boolean}>({mode:'offline',chartProvider:'yahoo',database:false});
   const [searchResults,setSearchResults]=useState<SearchResult[]>([]);
   const [searchLoading,setSearchLoading]=useState(false);
 
@@ -24,7 +24,24 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
     setQuotes(p=>({...p,...Object.fromEntries(result.map(q=>[q.symbol,q]))}));
   },[watchlist]);
 
-  useEffect(()=>{ void loadQuotes(); const id=setInterval(()=>void loadQuotes(),60000); return()=>clearInterval(id); },[loadQuotes]);
+  useEffect(()=>{
+    void loadQuotes();
+    const id=setInterval(()=>void loadQuotes(),60000);
+    return()=>clearInterval(id);
+  },[loadQuotes]);
+
+  const loadSelectedQuote=useCallback(async()=>{
+    try{
+      const q=await api.quote(selected);
+      setQuotes(p=>({...p,[q.symbol]:q}));
+    }catch{}
+  },[selected]);
+
+  useEffect(()=>{
+    void loadSelectedQuote();
+    const id=setInterval(()=>void loadSelectedQuote(),10000);
+    return()=>clearInterval(id);
+  },[loadSelectedQuote]);
 
   const loadCandles=useCallback(async()=>{
     setChartLoading(true);
@@ -40,7 +57,7 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
       setChartNote(result.note||'');
     } catch(e){
       setCandles([]);
-      setChartError(e instanceof Error?e.message:'Could not load chart data.');
+      setChartError(e instanceof Error?e.message:'Could not load real market chart data.');
     } finally {
       setChartLoading(false);
     }
