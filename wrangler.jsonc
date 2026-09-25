@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "marketview",
+  "name": "tradingchill",
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-25",
   "assets": {
@@ -12,6 +12,6 @@
   }
   // After creating D1, add:
   // "d1_databases": [
-  //   { "binding": "DB", "database_name": "marketview", "database_id": "YOUR_D1_DATABASE_ID" }
+  //   { "binding": "DB", "database_name": "tradingchill", "database_id": "YOUR_D1_DATABASE_ID" }
   // ]
 }
