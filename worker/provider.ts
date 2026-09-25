@@ -28,22 +28,17 @@ type YahooQuote={
 
 type TradingPeriod={start?:number;end?:number};
 
-function lastCloseInPeriod(
-  timestamps:number[],
-  closes:Array<number|null|undefined>,
-  period:TradingPeriod|undefined,
-  now:number,
-){
-  if(!period?.start||!period?.end)return null;
-  let value:number|null=null;
-  for(let i=0;i<timestamps.length;i++){
-    const time=timestamps[i];
-    const close=closes[i];
-    if(time>=period.start&&time<=period.end&&time<=now&&close!=null&&Number.isFinite(close)){
-      value=close;
-    }
+function exchangeDateKey(timestamp:number,timeZone:string){
+  try{
+    return new Intl.DateTimeFormat('en-CA',{
+      timeZone,
+      year:'numeric',
+      month:'2-digit',
+      day:'2-digit',
+    }).format(new Date(timestamp*1000));
+  }catch{
+    return new Date(timestamp*1000).toISOString().slice(0,10);
   }
-  return value;
 }
 
 async function yahooExtendedForSymbol(symbol:string):Promise<YahooQuote>{
@@ -52,7 +47,7 @@ async function yahooExtendedForSymbol(symbol:string):Promise<YahooQuote>{
   for(const host of YAHOO_CHART_HOSTS){
     try{
       const url=new URL(`${host}/${encodeURIComponent(symbol)}`);
-      url.searchParams.set('range','1d');
+      url.searchParams.set('range','5d');
       url.searchParams.set('interval','1m');
       url.searchParams.set('includePrePost','true');
       url.searchParams.set('events','div,splits');
@@ -73,8 +68,10 @@ async function yahooExtendedForSymbol(symbol:string):Promise<YahooQuote>{
             meta?:{
               symbol?:string;
               regularMarketPrice?:number;
+              regularMarketTime?:number;
               previousClose?:number;
               chartPreviousClose?:number;
+              exchangeTimezoneName?:string;
               currentTradingPeriod?:{
                 pre?:TradingPeriod;
                 regular?:TradingPeriod;
@@ -96,17 +93,42 @@ async function yahooExtendedForSymbol(symbol:string):Promise<YahooQuote>{
       const periods=meta.currentTradingPeriod||{};
       const timestamps=result?.timestamp||[];
       const closes=result?.indicators?.quote?.[0]?.close||[];
-
       const inPeriod=(period?:TradingPeriod)=>Boolean(period?.start&&period?.end&&now>=period.start&&now<=period.end);
       const state=inPeriod(periods.pre)?'PRE':inPeriod(periods.regular)?'REGULAR':inPeriod(periods.post)?'POST':'CLOSED';
+
+      let latestTime=0;
+      let latestClose:number|null=null;
+      for(let i=timestamps.length-1;i>=0;i--){
+        const close=closes[i];
+        if(close!=null&&Number.isFinite(close)){
+          latestTime=timestamps[i];
+          latestClose=close;
+          break;
+        }
+      }
+
+      let preMarketPrice:number|undefined;
+      let postMarketPrice:number|undefined;
+      const regularTime=meta.regularMarketTime||0;
+      const timeZone=meta.exchangeTimezoneName||'America/New_York';
+
+      if(latestClose!=null&&latestTime>regularTime){
+        const latestDay=exchangeDateKey(latestTime,timeZone);
+        const regularDay=exchangeDateKey(regularTime,timeZone);
+        if(latestDay===regularDay)postMarketPrice=latestClose;
+        else preMarketPrice=latestClose;
+      }
+
+      if(state==='PRE'&&latestClose!=null)preMarketPrice=latestClose;
+      if(state==='POST'&&latestClose!=null)postMarketPrice=latestClose;
 
       return{
         symbol:(meta.symbol||symbol).toUpperCase(),
         marketState:state,
         regularMarketPrice:Number.isFinite(meta.regularMarketPrice)?meta.regularMarketPrice:undefined,
         regularMarketPreviousClose:Number.isFinite(meta.previousClose)?meta.previousClose:meta.chartPreviousClose,
-        preMarketPrice:lastCloseInPeriod(timestamps,closes,periods.pre,now)??undefined,
-        postMarketPrice:lastCloseInPeriod(timestamps,closes,periods.post,now)??undefined,
+        preMarketPrice,
+        postMarketPrice,
       };
     }catch(error){
       lastError=error;
