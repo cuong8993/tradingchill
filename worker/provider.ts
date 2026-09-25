@@ -1,10 +1,14 @@
-import type { Candle, Env } from './types';
+import type { Candle, Env, Quote } from './types';
 
 const FINNHUB='https://finnhub.io/api/v1';
 const TWELVE_DATA='https://api.twelvedata.com';
 const YAHOO_CHART_HOSTS=[
   'https://query1.finance.yahoo.com/v8/finance/chart',
   'https://query2.finance.yahoo.com/v8/finance/chart',
+];
+const YAHOO_QUOTE_HOSTS=[
+  'https://query1.finance.yahoo.com/v7/finance/quote',
+  'https://query2.finance.yahoo.com/v7/finance/quote',
 ];
 
 async function finnhub<T>(env:Env,path:string,params:Record<string,string|number>):Promise<T>{
@@ -18,10 +22,119 @@ async function finnhub<T>(env:Env,path:string,params:Record<string,string|number
   return r.json() as Promise<T>;
 }
 
-export async function getQuote(env:Env,symbol:string){
+type YahooQuote={
+  symbol?:string;
+  marketState?:string;
+  regularMarketPrice?:number;
+  regularMarketPreviousClose?:number;
+  preMarketPrice?:number;
+  postMarketPrice?:number;
+};
+
+async function yahooExtendedQuotes(symbols:string[]):Promise<Map<string,YahooQuote>>{
+  if(!symbols.length)return new Map();
+  let lastError:unknown;
+
+  for(const host of YAHOO_QUOTE_HOSTS){
+    try{
+      const url=new URL(host);
+      url.searchParams.set('symbols',symbols.join(','));
+      url.searchParams.set('formatted','false');
+      const response=await fetch(url,{
+        headers:{
+          'accept':'application/json,text/plain,*/*',
+          'user-agent':'Mozilla/5.0 TradingChill/1.0',
+        },
+      });
+      if(response.status===429)throw new Error('Yahoo Finance extended-hours rate limit reached.');
+      if(!response.ok)throw new Error(`Yahoo Finance quote service returned ${response.status}.`);
+
+      const data=await response.json() as {quoteResponse?:{result?:YahooQuote[]}};
+      const map=new Map<string,YahooQuote>();
+      for(const row of data.quoteResponse?.result||[]){
+        if(row.symbol)map.set(row.symbol.toUpperCase(),row);
+      }
+      return map;
+    }catch(error){
+      lastError=error;
+    }
+  }
+
+  if(lastError)console.warn('Extended-hours quote enrichment unavailable',lastError);
+  return new Map();
+}
+
+async function finnhubQuote(env:Env,symbol:string):Promise<Quote>{
   const r=await finnhub<{c:number;d:number;dp:number;h:number;l:number;o:number;pc:number;t:number}>(env,'/quote',{symbol});
   if(!r.c)throw new Error(`No live quote for ${symbol}.`);
-  return{symbol,price:r.c,change:r.d,changePercent:r.dp,high:r.h,low:r.l,open:r.o,previousClose:r.pc,timestamp:r.t};
+  return{
+    symbol,
+    price:r.c,
+    change:r.d,
+    changePercent:r.dp,
+    high:r.h,
+    low:r.l,
+    open:r.o,
+    previousClose:r.pc,
+    timestamp:r.t,
+    marketState:null,
+    regularClose:r.c,
+    extendedPrice:null,
+    extendedSession:null,
+    preMarketPrice:null,
+    postMarketPrice:null,
+  };
+}
+
+function enrichQuote(base:Quote,yahoo?:YahooQuote):Quote{
+  if(!yahoo)return base;
+
+  const state=(yahoo.marketState||'').toUpperCase();
+  const pre=Number.isFinite(yahoo.preMarketPrice)?yahoo.preMarketPrice as number:null;
+  const post=Number.isFinite(yahoo.postMarketPrice)?yahoo.postMarketPrice as number:null;
+  const regular=Number.isFinite(yahoo.regularMarketPrice)?yahoo.regularMarketPrice as number:base.price;
+
+  let extendedSession:'pre'|'post'|null=null;
+  let extendedPrice:number|null=null;
+
+  if(state.includes('PRE')&&pre!=null){
+    extendedSession='pre';
+    extendedPrice=pre;
+  }else if((state.includes('POST')||state==='CLOSED')&&post!=null){
+    extendedSession='post';
+    extendedPrice=post;
+  }
+
+  return{
+    ...base,
+    marketState:state||null,
+    regularClose:regular,
+    extendedPrice,
+    extendedSession,
+    preMarketPrice:pre,
+    postMarketPrice:post,
+  };
+}
+
+export async function getQuote(env:Env,symbol:string){
+  const [base,extended]=await Promise.all([
+    finnhubQuote(env,symbol),
+    yahooExtendedQuotes([symbol]).catch(()=>new Map<string,YahooQuote>()),
+  ]);
+  return enrichQuote(base,extended.get(symbol.toUpperCase()));
+}
+
+export async function getQuotes(env:Env,symbols:string[]){
+  const [baseResults,extended]=await Promise.all([
+    Promise.allSettled(symbols.map(symbol=>finnhubQuote(env,symbol))),
+    yahooExtendedQuotes(symbols).catch(()=>new Map<string,YahooQuote>()),
+  ]);
+
+  return baseResults.flatMap(result=>{
+    if(result.status!=='fulfilled')return [];
+    const base=result.value;
+    return [enrichQuote(base,extended.get(base.symbol.toUpperCase()))];
+  });
 }
 
 const twelveInterval:Record<string,string>={
@@ -167,7 +280,7 @@ export async function getCandles(env:Env,symbol:string,resolution:string,from:nu
   return {
     candles,
     source:'yahoo' as const,
-    note:'Real market candles from Yahoo Finance; current quote from Finnhub.',
+    note:'Real market candles from Yahoo Finance; regular and extended quotes enriched from live quote feeds.',
   };
 }
 
