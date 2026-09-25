@@ -1,4 +1,4 @@
-export interface Env { FINNHUB_API_KEY?:string; DB?:D1Database }
+export interface Env { FINNHUB_API_KEY?:string; TWELVEDATA_API_KEY?:string; DB?:D1Database }
 export type Quote={symbol:string;price:number;change:number;changePercent:number;high:number;low:number;open:number;previousClose:number;timestamp:number};
 export type Candle={time:number;open:number;high:number;low:number;close:number;volume:number};
 export const json=(data:unknown,init:ResponseInit={})=>new Response(JSON.stringify(data),{...init,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...(init.headers||{})}});
