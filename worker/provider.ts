@@ -2,7 +2,10 @@ import type { Candle, Env } from './types';
 
 const FINNHUB='https://finnhub.io/api/v1';
 const TWELVE_DATA='https://api.twelvedata.com';
-const YAHOO_CHART='https://query1.finance.yahoo.com/v8/finance/chart';
+const YAHOO_CHART_HOSTS=[
+  'https://query1.finance.yahoo.com/v8/finance/chart',
+  'https://query2.finance.yahoo.com/v8/finance/chart',
+];
 
 async function finnhub<T>(env:Env,path:string,params:Record<string,string|number>):Promise<T>{
   if(!env.FINNHUB_API_KEY)throw new Error('FINNHUB_API_KEY is not configured.');
@@ -76,11 +79,24 @@ async function twelveDataCandles(env:Env,symbol:string,resolution:string,from:nu
   })).filter(c=>Number.isFinite(c.time)&&Number.isFinite(c.open)&&Number.isFinite(c.high)&&Number.isFinite(c.low)&&Number.isFinite(c.close));
 }
 
-async function yahooCandles(symbol:string,resolution:string,from:number,to:number):Promise<Candle[]>{
-  const interval=yahooInterval[resolution];
-  if(!interval)throw new Error('Unsupported chart interval.');
+type YahooChartResponse={
+  chart?:{
+    error?:{description?:string}|null;
+    result?:Array<{
+      timestamp?:number[];
+      indicators?:{quote?:Array<{
+        open?:Array<number|null>;
+        high?:Array<number|null>;
+        low?:Array<number|null>;
+        close?:Array<number|null>;
+        volume?:Array<number|null>;
+      }>};
+    }>;
+  };
+};
 
-  const url=new URL(`${YAHOO_CHART}/${encodeURIComponent(symbol)}`);
+async function fetchYahooHost(host:string,symbol:string,interval:string,from:number,to:number):Promise<Candle[]>{
+  const url=new URL(`${host}/${encodeURIComponent(symbol)}`);
   url.searchParams.set('period1',String(from));
   url.searchParams.set('period2',String(to));
   url.searchParams.set('interval',interval);
@@ -96,39 +112,47 @@ async function yahooCandles(symbol:string,resolution:string,from:number,to:numbe
   if(response.status===429)throw new Error('Yahoo Finance chart rate limit reached.');
   if(!response.ok)throw new Error(`Yahoo Finance chart service returned ${response.status}.`);
 
-  const data=await response.json() as {
-    chart?:{
-      error?:{description?:string}|null;
-      result?:Array<{
-        timestamp?:number[];
-        indicators?:{quote?:Array<{
-          open?:Array<number|null>;
-          high?:Array<number|null>;
-          low?:Array<number|null>;
-          close?:Array<number|null>;
-          volume?:Array<number|null>;
-        }>};
-      }>;
-    };
-  };
-
+  const data=await response.json() as YahooChartResponse;
   if(data.chart?.error)throw new Error(data.chart.error.description||'Yahoo Finance could not load chart data.');
+
   const result=data.chart?.result?.[0];
   const timestamps=result?.timestamp||[];
   const quote=result?.indicators?.quote?.[0];
   if(!timestamps.length||!quote)throw new Error(`No real candle data for ${symbol}.`);
 
-  const candles=timestamps.map((time,i)=>({
-    time,
-    open:Number(quote.open?.[i]),
-    high:Number(quote.high?.[i]),
-    low:Number(quote.low?.[i]),
-    close:Number(quote.close?.[i]),
-    volume:Number(quote.volume?.[i]||0),
-  })).filter(c=>Number.isFinite(c.time)&&Number.isFinite(c.open)&&Number.isFinite(c.high)&&Number.isFinite(c.low)&&Number.isFinite(c.close));
+  const candles:Candle[]=[];
+  for(let i=0;i<timestamps.length;i++){
+    const open=quote.open?.[i];
+    const high=quote.high?.[i];
+    const low=quote.low?.[i];
+    const close=quote.close?.[i];
+    if(open==null||high==null||low==null||close==null)continue;
+    if(!Number.isFinite(open)||!Number.isFinite(high)||!Number.isFinite(low)||!Number.isFinite(close))continue;
+    candles.push({
+      time:timestamps[i],
+      open,
+      high,
+      low,
+      close,
+      volume:Number(quote.volume?.[i]||0),
+    });
+  }
 
   if(!candles.length)throw new Error(`No real candle data for ${symbol}.`);
   return candles;
+}
+
+async function yahooCandles(symbol:string,resolution:string,from:number,to:number):Promise<Candle[]>{
+  const interval=yahooInterval[resolution];
+  if(!interval)throw new Error('Unsupported chart interval.');
+
+  let lastError:unknown;
+  for(const host of YAHOO_CHART_HOSTS){
+    try{return await fetchYahooHost(host,symbol,interval,from,to);}
+    catch(error){lastError=error;}
+  }
+
+  throw lastError instanceof Error?lastError:new Error('Real candle provider unavailable.');
 }
 
 export async function getCandles(env:Env,symbol:string,resolution:string,from:number,to:number){
