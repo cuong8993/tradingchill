@@ -28,7 +28,12 @@ export default function VolumeSettingsModal({value,onClose,onApply}:Props){
     onClose();
   };
 
-  const toggleEnabled=()=>setEnabled(v=>!v);
+  const toggleEnabled=()=>{
+    const next=!enabled;
+    setEnabled(next);
+    const parsed=Math.max(1,Math.min(500,Math.round(Number(length)||20)));
+    onApply({enabled:next,type,length:parsed,color});
+  };
 
   return <div className="modal-bg" onMouseDown={onClose}>
     <div className="modal volume-settings-modal" onMouseDown={e=>e.stopPropagation()}>
