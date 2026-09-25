@@ -1,0 +1,6 @@
+import { Activity, Plus, Trash2 } from 'lucide-react';
+import { money, pct, QUOTE_BATCH_SIZE } from '../config';
+import type { Quote } from '../types';
+
+type Props={symbols:string[];selected:string;quotes:Record<string,Quote>;mobileOpen:boolean;onSelect:(s:string)=>void;onRemove:(s:string)=>void;onAdd:()=>void};
+export default function Watchlist(p:Props){return <aside className={`watchlist ${p.mobileOpen?'open':''}`}><div className="watch-head"><span>WATCHLIST</span><strong>{p.symbols.length} symbols</strong><button onClick={p.onAdd}><Plus size={15}/></button></div><div className="watch-columns"><span>Symbol</span><span>Last</span><span>Chg%</span></div><div className="watch-items">{p.symbols.map(s=>{const q=p.quotes[s];return <button className={`watch-row ${p.selected===s?'active':''}`} key={s} onClick={()=>p.onSelect(s)}><span className="ticker"><b>{s.slice(0,1)}</b><strong>{s}</strong></span><span>{money(q?.price)}</span><span className={(q?.change??0)>=0?'up':'down'}>{pct(q?.changePercent)}</span><i onClick={e=>{e.stopPropagation();p.onRemove(s)}}><Trash2 size={13}/></i></button>})}</div><button className="add-symbol" onClick={p.onAdd}><Plus size={14}/> Add symbol</button><div className="watch-foot"><Activity size={13}/> Auto refresh · batches of {QUOTE_BATCH_SIZE}</div></aside>}
