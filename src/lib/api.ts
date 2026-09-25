@@ -10,7 +10,7 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  config: () => json<{ mode: 'live' | 'demo'; database: boolean }>('/api/config'),
+  config: () => json<{ mode: 'live' | 'offline'; chartProvider: 'twelvedata' | 'yahoo'; database: boolean }>('/api/config'),
   search: (q: string) => json<SearchResult[]>(`/api/search?q=${encodeURIComponent(q)}`),
   quote: (symbol: string) => json<Quote>(`/api/quote?symbol=${encodeURIComponent(symbol)}`),
   quotes: (symbols: string[]) => json<Quote[]>(`/api/quotes?symbols=${encodeURIComponent(symbols.join(','))}`),
