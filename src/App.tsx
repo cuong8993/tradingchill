@@ -3,11 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertDrawer, AlertModal } from './components/AlertUI';
 import ChartToolbar from './components/ChartToolbar';
 import TopBar from './components/TopBar';
+import VolumeSettingsModal from './components/VolumeSettingsModal';
 import Watchlist from './components/Watchlist';
-import { DEFAULT_INDICATORS, DEFAULT_WATCHLIST, stored, TIMEFRAMES } from './config';
+import { DEFAULT_INDICATORS, DEFAULT_VOLUME_MA, DEFAULT_WATCHLIST, stored, TIMEFRAMES } from './config';
 import { useAlerts } from './hooks/useAlerts';
 import { useMarket } from './hooks/useMarket';
-import type { IndicatorSettings, Timeframe } from './types';
+import type { IndicatorSettings, Timeframe, VolumeMASettings } from './types';
 import { ChartCard, MarketHeader } from './components/WorkspaceBits';
 
 export default function App(){
@@ -15,16 +16,24 @@ export default function App(){
   const [selected,setSelected]=useState(()=>stored('mv.selected',DEFAULT_WATCHLIST[0]));
   const [timeframe,setTimeframe]=useState<Timeframe>(TIMEFRAMES[1]);
   const [indicators,setIndicators]=useState<IndicatorSettings>(()=>({...DEFAULT_INDICATORS,...stored('mv.indicators',DEFAULT_INDICATORS)}));
+  const [volumeMA,setVolumeMA]=useState<VolumeMASettings>(()=>({...DEFAULT_VOLUME_MA,...stored('tc.volumeMA',DEFAULT_VOLUME_MA)}));
+  const [logScale,setLogScale]=useState(()=>stored('tc.logScale',false));
+  const [fitSignal,setFitSignal]=useState(0);
+  const [volumeSettingsOpen,setVolumeSettingsOpen]=useState(false);
   const [searchOpen,setSearchOpen]=useState(false),[searchText,setSearchText]=useState(''),[indicatorOpen,setIndicatorOpen]=useState(false);
   const [mobileWatch,setMobileWatch]=useState(false),[alertsOpen,setAlertsOpen]=useState(false),[alertModal,setAlertModal]=useState(false),[toast,setToast]=useState('');
+
   const market=useMarket(watchlist,selected,timeframe), quote=market.quotes[selected];
   const toastFn=useCallback((s:string)=>setToast(s),[]);
+  const openVolumeSettings=useCallback(()=>setVolumeSettingsOpen(true),[]);
   const alertState=useAlerts(market.config.database,selected,quote,market.quotes,toastFn);
   const selectedAlerts=useMemo(()=>alertState.alerts.filter(a=>a.symbol===selected&&a.active),[alertState.alerts,selected]);
 
   useEffect(()=>localStorage.setItem('mv.watchlist',JSON.stringify(watchlist)),[watchlist]);
   useEffect(()=>localStorage.setItem('mv.selected',JSON.stringify(selected)),[selected]);
   useEffect(()=>localStorage.setItem('mv.indicators',JSON.stringify(indicators)),[indicators]);
+  useEffect(()=>localStorage.setItem('tc.volumeMA',JSON.stringify(volumeMA)),[volumeMA]);
+  useEffect(()=>localStorage.setItem('tc.logScale',JSON.stringify(logScale)),[logScale]);
   useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(id)},[toast]);
   useEffect(()=>{const id=setTimeout(()=>void market.search(searchText),220);return()=>clearTimeout(id)},[searchText,market.search]);
 
@@ -50,15 +59,45 @@ export default function App(){
       onAdd={add}
       onAlerts={()=>setAlertsOpen(v=>!v)}
     />
+
     <Watchlist symbols={watchlist} selected={selected} quotes={market.quotes} mobileOpen={mobileWatch} onSelect={select} onRemove={remove} onAdd={()=>setSearchOpen(true)}/>
+
     <main className="workspace">
       <MarketHeader symbol={selected} quote={quote}/>
-      <ChartToolbar timeframe={timeframe} indicators={indicators} open={indicatorOpen} onTimeframe={setTimeframe} onOpen={()=>setIndicatorOpen(v=>!v)} onClose={()=>setIndicatorOpen(false)} onToggle={k=>setIndicators(p=>({...p,[k]:!p[k]}))} onAlert={()=>setAlertModal(true)}/>
-      <ChartCard loading={market.chartLoading} error={market.chartError} candles={market.candles} source={market.chartSource} note={market.chartNote} currentPrice={quote?.price} indicators={indicators} alerts={selectedAlerts} retry={()=>void market.loadCandles()}/>
+      <ChartToolbar
+        timeframe={timeframe}
+        indicators={indicators}
+        open={indicatorOpen}
+        logScale={logScale}
+        onTimeframe={setTimeframe}
+        onOpen={()=>setIndicatorOpen(v=>!v)}
+        onClose={()=>setIndicatorOpen(false)}
+        onToggle={k=>setIndicators(p=>({...p,[k]:!p[k]}))}
+        onAlert={()=>setAlertModal(true)}
+        onAutoFit={()=>setFitSignal(v=>v+1)}
+        onToggleLog={()=>setLogScale(v=>!v)}
+      />
+      <ChartCard
+        loading={market.chartLoading}
+        error={market.chartError}
+        candles={market.candles}
+        source={market.chartSource}
+        note={market.chartNote}
+        quote={quote}
+        indicators={indicators}
+        alerts={selectedAlerts}
+        volumeMA={volumeMA}
+        fitSignal={fitSignal}
+        logScale={logScale}
+        onVolumeSettings={openVolumeSettings}
+        retry={()=>void market.loadCandles()}
+      />
       <footer><span>{market.config.mode==='live'?'Live Finnhub quotes':'Live quote feed offline'}</span><span>{market.config.chartProvider==='twelvedata'?'Twelve Data charts':'Yahoo real-market charts'} · {watchlist.length} symbols</span></footer>
     </main>
+
     {alertsOpen&&<AlertDrawer alerts={alertState.alerts} onClose={()=>setAlertsOpen(false)} onNew={()=>setAlertModal(true)} onDelete={a=>void alertState.remove(a)}/>}
     {alertModal&&<AlertModal symbol={selected} price={quote?.price??0} onClose={()=>setAlertModal(false)} onCreate={async(d,t,n)=>{await alertState.create(d,t,n);toastFn(`Alert created for ${selected}`)}}/>}
+    {volumeSettingsOpen&&<VolumeSettingsModal value={volumeMA} onClose={()=>setVolumeSettingsOpen(false)} onApply={setVolumeMA}/>}
     {toast&&<div className="toast"><Check size={14}/>{toast}</div>}
   </div>;
 }
