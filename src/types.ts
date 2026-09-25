@@ -19,6 +19,14 @@ export type Candle = {
   volume: number;
 };
 
+export type CandleSource = 'twelvedata' | 'finnhub' | 'demo';
+
+export type CandleResponse = {
+  candles: Candle[];
+  source: CandleSource;
+  note?: string;
+};
+
 export type SearchResult = {
   symbol: string;
   description: string;
