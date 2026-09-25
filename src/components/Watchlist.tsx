@@ -66,8 +66,8 @@ export default function Watchlist(p:Props){
     <div className="watch-columns">
       {header('symbol','Symbol')}
       {header('price','Last')}
-      {header('extendedPrice','Ext')}
       {header('changePercent','Chg%')}
+      {header('extendedPrice','Ext')}
     </div>
 
     <div className="watch-items">
@@ -82,8 +82,8 @@ export default function Watchlist(p:Props){
         return <button className={`watch-row ${p.selected===s?'active':''}`} key={s} onClick={()=>p.onSelect(s)}>
           <span className="ticker"><b>{s.slice(0,1)}</b><strong>{s}</strong></span>
           <span className={`numeric ${lastClass}`}>{money(q?.price)}</span>
-          <span className={`numeric ext-price ${extClass}`} title={extTitle}>{money(q?.extendedPrice)}</span>
           <span className={`numeric ${changeClass}`}>{pct(q?.changePercent)}</span>
+          <span className={`numeric ext-price ${extClass}`} title={extTitle}>{money(q?.extendedPrice)}</span>
           <i className="remove-symbol" onClick={e=>{e.stopPropagation();p.onRemove(s)}}><Trash2 size={13}/></i>
         </button>;
       })}
