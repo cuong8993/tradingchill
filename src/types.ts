@@ -60,6 +60,7 @@ export type IndicatorSettings = {
 };
 
 export type VolumeMASettings = {
+  enabled: boolean;
   type: 'SMA' | 'EMA';
   length: number;
   color: string;
