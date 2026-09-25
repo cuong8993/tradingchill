@@ -186,9 +186,15 @@ function enrichQuote(base:Quote,yahoo?:YahooQuote):Quote{
   if(state.includes('PRE')&&pre!=null){
     extendedSession='pre';
     extendedPrice=pre;
-  }else if((state.includes('POST')||state==='CLOSED')&&post!=null){
+  }else if(state.includes('POST')&&post!=null){
     extendedSession='post';
     extendedPrice=post;
+  }else if(state==='CLOSED'&&post!=null){
+    extendedSession='post';
+    extendedPrice=post;
+  }else if(state==='CLOSED'&&pre!=null){
+    extendedSession='pre';
+    extendedPrice=pre;
   }
 
   return{
