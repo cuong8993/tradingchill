@@ -54,7 +54,7 @@ export default function App(){
     <main className="workspace">
       <MarketHeader symbol={selected} quote={quote}/>
       <ChartToolbar timeframe={timeframe} indicators={indicators} open={indicatorOpen} onTimeframe={setTimeframe} onOpen={()=>setIndicatorOpen(v=>!v)} onClose={()=>setIndicatorOpen(false)} onToggle={k=>setIndicators(p=>({...p,[k]:!p[k]}))} onAlert={()=>setAlertModal(true)}/>
-      <ChartCard loading={market.chartLoading} error={market.chartError} candles={market.candles} indicators={indicators} alerts={selectedAlerts} retry={()=>void market.loadCandles()}/>
+      <ChartCard loading={market.chartLoading} error={market.chartError} candles={market.candles} source={market.chartSource} note={market.chartNote} indicators={indicators} alerts={selectedAlerts} retry={()=>void market.loadCandles()}/>
       <footer><span>{market.config.mode==='live'?'Market feed connected':'Demo generator active'}</span><span>{market.config.database?'Cloud alerts':'Local alerts'} · {watchlist.length} symbols</span></footer>
     </main>
     {alertsOpen&&<AlertDrawer alerts={alertState.alerts} onClose={()=>setAlertsOpen(false)} onNew={()=>setAlertModal(true)} onDelete={a=>void alertState.remove(a)}/>}
