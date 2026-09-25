@@ -31,9 +31,25 @@ export default function App(){
   const add=(s:string)=>{const clean=s.toUpperCase();setWatchlist(p=>p.includes(clean)?p:[...p,clean]);setSelected(clean);setSearchOpen(false);setSearchText('')};
   const remove=(s:string)=>setWatchlist(p=>{const n=p.filter(x=>x!==s);if(selected===s&&n[0])setSelected(n[0]);return n});
   const select=(s:string)=>{setSelected(s);setMobileWatch(false)};
+  const selectFromDropdown=(s:string)=>{setSelected(s);setSearchOpen(false);setSearchText('')};
 
   return <div className="app-shell">
-    <TopBar selected={selected} mode={market.config.mode} hasAlerts={alertState.alerts.some(a=>a.active)} searchOpen={searchOpen} searchText={searchText} results={market.searchResults} loading={market.searchLoading} onMenu={()=>setMobileWatch(v=>!v)} onSearchOpen={()=>setSearchOpen(v=>!v)} onSearchText={setSearchText} onAdd={add} onAlerts={()=>setAlertsOpen(v=>!v)}/>
+    <TopBar
+      selected={selected}
+      watchlist={watchlist}
+      mode={market.config.mode}
+      hasAlerts={alertState.alerts.some(a=>a.active)}
+      searchOpen={searchOpen}
+      searchText={searchText}
+      results={market.searchResults}
+      loading={market.searchLoading}
+      onMenu={()=>setMobileWatch(v=>!v)}
+      onSearchOpen={()=>setSearchOpen(v=>!v)}
+      onSearchText={setSearchText}
+      onSelect={selectFromDropdown}
+      onAdd={add}
+      onAlerts={()=>setAlertsOpen(v=>!v)}
+    />
     <Watchlist symbols={watchlist} selected={selected} quotes={market.quotes} mobileOpen={mobileWatch} onSelect={select} onRemove={remove} onAdd={()=>setSearchOpen(true)}/>
     <main className="workspace">
       <MarketHeader symbol={selected} quote={quote}/>
