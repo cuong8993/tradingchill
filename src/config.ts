@@ -30,6 +30,7 @@ export const DEFAULT_INDICATORS: IndicatorSettings = {
 };
 
 export const DEFAULT_VOLUME_MA: VolumeMASettings = {
+  enabled:true,
   type:'SMA',
   length:20,
   color:'#f6c85f',
