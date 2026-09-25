@@ -1,7 +1,7 @@
 @media(max-width:850px){
   .app-shell{
     height:100dvh;
-    min-height:100dvh;
+    min-height:0;
     grid-template-columns:1fr;
     grid-template-rows:58px minmax(0,1fr);
     overflow:hidden
@@ -12,12 +12,12 @@
   .brand i,.search-trigger span,.ohlc{display:none}
   .brand-mark{width:28px;height:28px;flex-basis:28px}
   .mobile-menu{display:block;color:var(--text);padding:0 4px}
-  .watchlist{position:fixed;left:0;top:58px;bottom:0;width:min(300px,86vw);z-index:70;transform:translateX(-101%);transition:.2s;box-shadow:25px 0 60px #0009}
+  .watchlist{position:fixed;left:0;top:58px;bottom:0;width:min(330px,90vw);z-index:70;transform:translateX(-101%);transition:.2s;box-shadow:25px 0 60px #0009}
   .watchlist.open{transform:none}
   .workspace{
     grid-column:1;
     grid-row:2;
-    height:calc(100dvh - 58px);
+    height:100%;
     min-height:0;
     overflow:hidden;
     grid-template-rows:72px 45px minmax(0,1fr) 28px
@@ -26,15 +26,15 @@
   .market-head>div:first-child{min-width:0}
   .market-head h1{font-size:14px}
   .market-head p{font-size:8px}
-  .instrument-avatar{width:31px;height:31px}
+  .instrument-avatar{width:31px;height:31px;flex-basis:31px}
   .quote{margin-left:auto;min-width:0}
   .quote strong{font-size:20px}
   .toolbar{overflow-x:auto;overflow-y:visible;padding:0 7px;scrollbar-width:none}
   .toolbar::-webkit-scrollbar{display:none}
   .timeframes{flex:0 0 auto}
   .tool{flex:0 0 auto}
-  .chart-card{min-height:280px;height:100%;overflow:hidden}
-  .chart-host{min-height:280px;height:100%!important}
+  .chart-card{min-height:0;height:100%;overflow:hidden}
+  .chart-host{min-height:0;height:100%!important}
   .indicator-panel{position:fixed;top:108px;left:7px;width:min(330px,calc(100vw - 14px));max-height:calc(100dvh - 120px);overflow:auto}
   .search-panel{position:fixed;top:62px;left:7px;width:calc(100vw - 14px);min-width:0;max-height:calc(100dvh - 70px);overflow:hidden}
   .ticker-dropdown{max-height:min(50dvh,360px)}
@@ -55,5 +55,35 @@
   .workspace{grid-template-rows:68px 43px minmax(0,1fr) 26px}
   .market-head{gap:8px}
   .quote strong{font-size:18px}
-  .chart-card,.chart-host{min-height:260px}
+  .chart-key span{display:none}
+}
+
+@media(max-height:820px) and (min-width:851px){
+  .app-shell{grid-template-rows:50px minmax(0,1fr)}
+  .topbar{padding:0 11px;gap:12px}
+  .brand-mark{width:28px;height:28px;flex-basis:28px}
+  .brand strong{font-size:14px}
+  .search-trigger,.icon{height:31px}
+  .workspace{grid-template-rows:66px 40px minmax(0,1fr) 24px}
+  .market-head{padding:0 14px;gap:20px}
+  .instrument-avatar{width:31px;height:31px;flex-basis:31px}
+  .quote strong{font-size:20px}
+  .toolbar{padding:0 9px;gap:6px}
+  .timeframes button{height:25px}
+  .tool{height:27px}
+  .watch-head{height:44px}
+  .watch-columns{height:26px}
+  .watch-row{height:40px}
+  .add-symbol{height:32px}
+  .watch-foot{height:26px}
+  .chart-card,.chart-host{min-height:0}
+  .chart-source{top:6px}
+  .notice{bottom:5px}
+}
+
+@media(max-height:680px) and (min-width:851px){
+  .workspace{grid-template-rows:58px 38px minmax(0,1fr) 22px}
+  .market-head p{display:none}
+  .quote strong{font-size:18px}
+  .watch-row{height:36px}
 }
