@@ -13,6 +13,7 @@ import { atr, bollinger, ema, macd, rsi, sma, stochastic, vwap } from '../lib/in
 
 type Props = {
   candles: Candle[];
+  livePrice?: number;
   indicators: IndicatorSettings;
   alerts: PriceAlert[];
 };
@@ -21,7 +22,7 @@ const asTime = (n: number) => n as UTCTimestamp;
 const safeWidth = (el: HTMLElement) => Math.max(320, Math.floor(el.clientWidth || el.getBoundingClientRect().width || 320));
 const safeHeight = (el: HTMLElement) => Math.max(260, Math.floor(el.clientHeight || el.getBoundingClientRect().height || 260));
 
-export default function MarketChart({ candles, indicators, alerts }: Props) {
+export default function MarketChart({ candles, livePrice, indicators, alerts }: Props) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,9 +64,21 @@ export default function MarketChart({ candles, indicators, alerts }: Props) {
       priceLineVisible: true,
       lastValueVisible: true,
     });
+
     price.setData(candles.map(c => ({
       time: asTime(c.time), open: c.open, high: c.high, low: c.low, close: c.close,
     })));
+
+    if (Number.isFinite(livePrice)) {
+      price.createPriceLine({
+        price: livePrice as number,
+        color: '#22c58b',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'LIVE',
+      });
+    }
 
     let nextPane = 1;
 
@@ -174,7 +187,7 @@ export default function MarketChart({ candles, indicators, alerts }: Props) {
       window.visualViewport?.removeEventListener('resize', resizeChart);
       chart.remove();
     };
-  }, [candles, indicators, alerts]);
+  }, [candles, livePrice, indicators, alerts]);
 
   return <div ref={host} className="chart-host" />;
 }
