@@ -19,7 +19,7 @@ export type Candle = {
   volume: number;
 };
 
-export type CandleSource = 'twelvedata' | 'finnhub' | 'demo';
+export type CandleSource = 'twelvedata' | 'yahoo';
 
 export type CandleResponse = {
   candles: Candle[];
