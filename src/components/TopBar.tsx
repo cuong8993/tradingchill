@@ -4,7 +4,7 @@ import type { SearchResult } from '../types';
 type Props={
   selected:string;
   watchlist:string[];
-  mode:'live'|'demo';
+  mode:'live'|'offline';
   hasAlerts:boolean;
   searchOpen:boolean;
   searchText:string;
@@ -56,6 +56,6 @@ export default function TopBar(p:Props){
       </div>}
     </div>
 
-    <div className="top-actions"><span className={`data-badge ${p.mode}`}>{p.mode==='live'?'LIVE':'DEMO'}</span><button className="icon" onClick={p.onAlerts}>{p.hasAlerts?<BellRing size={17}/>:<Bell size={17}/>}</button></div>
+    <div className="top-actions"><span className={`data-badge ${p.mode}`}>{p.mode==='live'?'LIVE':'OFFLINE'}</span><button className="icon" onClick={p.onAlerts}>{p.hasAlerts?<BellRing size={17}/>:<Bell size={17}/>}</button></div>
   </header>;
 }
