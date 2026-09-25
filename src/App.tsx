@@ -54,8 +54,8 @@ export default function App(){
     <main className="workspace">
       <MarketHeader symbol={selected} quote={quote}/>
       <ChartToolbar timeframe={timeframe} indicators={indicators} open={indicatorOpen} onTimeframe={setTimeframe} onOpen={()=>setIndicatorOpen(v=>!v)} onClose={()=>setIndicatorOpen(false)} onToggle={k=>setIndicators(p=>({...p,[k]:!p[k]}))} onAlert={()=>setAlertModal(true)}/>
-      <ChartCard loading={market.chartLoading} error={market.chartError} candles={market.candles} source={market.chartSource} note={market.chartNote} indicators={indicators} alerts={selectedAlerts} retry={()=>void market.loadCandles()}/>
-      <footer><span>{market.config.mode==='live'?'Market feed connected':'Demo generator active'}</span><span>{market.config.database?'Cloud alerts':'Local alerts'} · {watchlist.length} symbols</span></footer>
+      <ChartCard loading={market.chartLoading} error={market.chartError} candles={market.candles} source={market.chartSource} note={market.chartNote} currentPrice={quote?.price} indicators={indicators} alerts={selectedAlerts} retry={()=>void market.loadCandles()}/>
+      <footer><span>{market.config.mode==='live'?'Live Finnhub quotes':'Live quote feed offline'}</span><span>{market.config.chartProvider==='twelvedata'?'Twelve Data charts':'Yahoo real-market charts'} · {watchlist.length} symbols</span></footer>
     </main>
     {alertsOpen&&<AlertDrawer alerts={alertState.alerts} onClose={()=>setAlertsOpen(false)} onNew={()=>setAlertModal(true)} onDelete={a=>void alertState.remove(a)}/>}
     {alertModal&&<AlertModal symbol={selected} price={quote?.price??0} onClose={()=>setAlertModal(false)} onCreate={async(d,t,n)=>{await alertState.create(d,t,n);toastFn(`Alert created for ${selected}`)}}/>}
