@@ -1,17 +1,27 @@
 # TradingChill
 
-A modern TradingView-style personal market dashboard built for **Cloudflare Workers + GitHub**.
+TradingChill is a modern market dashboard built with React, Cloudflare Workers, and TradingView Lightweight Charts(TM).
 
-## Included in v0.1
+## Market data policy
 
-- Modern responsive dark trading workspace
-- Watchlist with **no artificial symbol cap**
-- Quote refreshes split into safe batches of 25 symbols
-- Symbol search
-- Live quotes and candles, or built-in demo data with no API key
-- Interactive candlestick charts using TradingView Lightweight Charts(TM)
+TradingChill uses **real market data only**. There is no demo quote generator and no synthetic/demo candle fallback.
+
+- **Finnhub** provides live quotes and symbol search.
+- **Yahoo Finance chart data** provides real OHLCV candles without requiring a second API key.
+- If `TWELVEDATA_API_KEY` is configured, Twelve Data is preferred for chart candles.
+- The live Finnhub quote is drawn on the chart as a separate `LIVE` price line.
+
+If a real data provider is unavailable, TradingChill shows an error instead of inventing market data.
+
+## Features
+
+- Responsive desktop/mobile trading workspace
+- Watchlist with no artificial client-side symbol cap
+- Quote requests batched for large watchlists
+- Watchlist ticker dropdown and symbol search
+- Real candlestick charts
 - Timeframes: 1m, 5m, 15m, 1H, 1D, 1W
-- **No active-indicator cap**: enable any combination simultaneously
+- Multiple indicators enabled simultaneously
 - EMA 9 / 20 / 50
 - SMA 10 / 20 / 50 / 200
 - Bollinger Bands 20 / 2 sigma
@@ -21,54 +31,54 @@ A modern TradingView-style personal market dashboard built for **Cloudflare Work
 - Stochastic 14
 - ATR 14
 - Volume
-- Multiple resizable indicator panes
-- Price alerts: crosses above / crosses below
-- Local alerts before D1 is configured
-- Cloud alerts stored in D1 and checked every minute by a Worker Cron Trigger
-- Responsive phone/tablet layout
-- Finnhub provider adapter behind the Worker, so the API key is not shipped to the browser
+- Resizable indicator panes
+- Price alerts
+- D1-backed cloud alert storage and scheduled checks
 
-> TradingChill is an independent project inspired by professional charting workflows. It does not copy TradingView branding or proprietary code. Lightweight Charts attribution remains in the UI.
+## Required live quote secret
 
-## Install
-
-```bash
-npm install
-npm run dev
-```
-
-Without a market-data secret, the app runs in **Demo Data** mode.
-
-## Live market data
-
-Add a Finnhub API key:
+Add a Finnhub API key to Cloudflare:
 
 ```bash
 npx wrangler secret put FINNHUB_API_KEY
 ```
 
-## Cloud alerts with D1
+In the Cloudflare dashboard this is:
 
-```bash
-npx wrangler d1 create tradingchill
+`Workers & Pages -> tradingchill -> Settings -> Variables and Secrets`
+
+Create a **Secret** named exactly:
+
+```text
+FINNHUB_API_KEY
 ```
 
-Add the returned D1 database ID to `wrangler.jsonc`, then run:
+## Optional chart provider
 
-```bash
-npx wrangler d1 migrations apply tradingchill --remote
+No second key is required for real candle charts because TradingChill can use Yahoo Finance chart data.
+
+If you want Twelve Data instead, add:
+
+```text
+TWELVEDATA_API_KEY
 ```
+
+When that secret exists, Twelve Data is preferred automatically.
 
 ## Deploy
 
 ```bash
+npm install
+npm run build
 npm run deploy
 ```
 
-## Watchlist scaling
+Git-connected Cloudflare deployments will rebuild automatically after commits to `main`.
 
-There is no artificial client-side watchlist maximum. The browser divides the watchlist into 25-symbol batches and the Worker accepts up to 50 quote symbols per request. Practical refresh capacity still depends on the limits of the connected market-data provider.
+## Cloud alerts
 
-## Indicators
+The Worker has a D1 binding named `DB` and initializes its alert tables automatically.
 
-Indicators are independent toggles. You can display several price overlays and several lower panes at the same time. There is no two-indicator restriction.
+## Notes
+
+TradingChill is an independent project. TradingView Lightweight Charts attribution remains visible in the application as required by the library notice.
