@@ -16,6 +16,11 @@ type Props={
   onAdd:()=>void;
 };
 
+function directionClass(value:number|null|undefined,reference:number|null|undefined){
+  if(value==null||reference==null||!Number.isFinite(value)||!Number.isFinite(reference))return '';
+  return value>=reference?'up':'down';
+}
+
 export default function Watchlist(p:Props){
   const [sort,setSort]=useState<{key:SortKey;direction:SortDirection}>({key:'symbol',direction:'asc'});
 
@@ -69,11 +74,16 @@ export default function Watchlist(p:Props){
       {sortedSymbols.map(s=>{
         const q=p.quotes[s];
         const extTitle=q?.extendedSession?`${q.extendedSession.toUpperCase()} market`:undefined;
+        const lastClass=directionClass(q?.price,q?.previousClose);
+        const extReference=q?.regularClose??q?.price;
+        const extClass=directionClass(q?.extendedPrice,extReference);
+        const changeClass=(q?.changePercent??0)>=0?'up':'down';
+
         return <button className={`watch-row ${p.selected===s?'active':''}`} key={s} onClick={()=>p.onSelect(s)}>
           <span className="ticker"><b>{s.slice(0,1)}</b><strong>{s}</strong></span>
-          <span className="numeric">{money(q?.price)}</span>
-          <span className={`numeric ext-price ${q?.extendedSession||''}`} title={extTitle}>{money(q?.extendedPrice)}</span>
-          <span className={`numeric ${(q?.change??0)>=0?'up':'down'}`}>{pct(q?.changePercent)}</span>
+          <span className={`numeric ${lastClass}`}>{money(q?.price)}</span>
+          <span className={`numeric ext-price ${extClass}`} title={extTitle}>{money(q?.extendedPrice)}</span>
+          <span className={`numeric ${changeClass}`}>{pct(q?.changePercent)}</span>
           <i className="remove-symbol" onClick={e=>{e.stopPropagation();p.onRemove(s)}}><Trash2 size={13}/></i>
         </button>;
       })}
