@@ -5,7 +5,14 @@ import ChartToolbar from './components/ChartToolbar';
 import TopBar from './components/TopBar';
 import VolumeSettingsModal from './components/VolumeSettingsModal';
 import Watchlist from './components/Watchlist';
-import { DEFAULT_INDICATORS, DEFAULT_VOLUME_MA, DEFAULT_WATCHLIST, stored, TIMEFRAMES } from './config';
+import {
+  DEFAULT_INDICATORS,
+  DEFAULT_TIMEFRAME,
+  DEFAULT_TIMEFRAME_FAVORITES,
+  DEFAULT_VOLUME_MA,
+  DEFAULT_WATCHLIST,
+  stored,
+} from './config';
 import { useAlerts } from './hooks/useAlerts';
 import { useMarket } from './hooks/useMarket';
 import type { IndicatorSettings, Timeframe, VolumeMASettings } from './types';
@@ -14,7 +21,8 @@ import { ChartCard, MarketHeader } from './components/WorkspaceBits';
 export default function App(){
   const [watchlist,setWatchlist]=useState<string[]>(()=>stored('mv.watchlist',DEFAULT_WATCHLIST));
   const [selected,setSelected]=useState(()=>stored('mv.selected',DEFAULT_WATCHLIST[0]));
-  const [timeframe,setTimeframe]=useState<Timeframe>(TIMEFRAMES[1]);
+  const [timeframe,setTimeframe]=useState<Timeframe>(DEFAULT_TIMEFRAME);
+  const [timeframeFavorites,setTimeframeFavorites]=useState<string[]>(()=>stored('tc.timeframeFavorites',DEFAULT_TIMEFRAME_FAVORITES));
   const [indicators,setIndicators]=useState<IndicatorSettings>(()=>({...DEFAULT_INDICATORS,...stored('mv.indicators',DEFAULT_INDICATORS)}));
   const [volumeMA,setVolumeMA]=useState<VolumeMASettings>(()=>({...DEFAULT_VOLUME_MA,...stored('tc.volumeMA',DEFAULT_VOLUME_MA)}));
   const [logScale,setLogScale]=useState(()=>stored('tc.logScale',false));
@@ -34,6 +42,7 @@ export default function App(){
   useEffect(()=>localStorage.setItem('mv.indicators',JSON.stringify(indicators)),[indicators]);
   useEffect(()=>localStorage.setItem('tc.volumeMA',JSON.stringify(volumeMA)),[volumeMA]);
   useEffect(()=>localStorage.setItem('tc.logScale',JSON.stringify(logScale)),[logScale]);
+  useEffect(()=>localStorage.setItem('tc.timeframeFavorites',JSON.stringify(timeframeFavorites)),[timeframeFavorites]);
   useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(id)},[toast]);
   useEffect(()=>{const id=setTimeout(()=>void market.search(searchText),220);return()=>clearTimeout(id)},[searchText,market.search]);
 
@@ -41,6 +50,7 @@ export default function App(){
   const remove=(s:string)=>setWatchlist(p=>{const n=p.filter(x=>x!==s);if(selected===s&&n[0])setSelected(n[0]);return n});
   const select=(s:string)=>{setSelected(s);setMobileWatch(false)};
   const selectFromDropdown=(s:string)=>{setSelected(s);setSearchOpen(false);setSearchText('')};
+  const toggleTimeframeFavorite=(label:string)=>setTimeframeFavorites(current=>current.includes(label)?current.filter(x=>x!==label):[...current,label]);
 
   return <div className="app-shell">
     <TopBar
@@ -66,16 +76,15 @@ export default function App(){
       <MarketHeader symbol={selected} quote={quote}/>
       <ChartToolbar
         timeframe={timeframe}
+        favorites={timeframeFavorites}
         indicators={indicators}
         open={indicatorOpen}
-        logScale={logScale}
         onTimeframe={setTimeframe}
+        onToggleFavorite={toggleTimeframeFavorite}
         onOpen={()=>setIndicatorOpen(v=>!v)}
         onClose={()=>setIndicatorOpen(false)}
         onToggle={k=>setIndicators(p=>({...p,[k]:!p[k]}))}
         onAlert={()=>setAlertModal(true)}
-        onAutoFit={()=>setFitSignal(v=>v+1)}
-        onToggleLog={()=>setLogScale(v=>!v)}
       />
       <ChartCard
         loading={market.chartLoading}
@@ -89,6 +98,8 @@ export default function App(){
         volumeMA={volumeMA}
         fitSignal={fitSignal}
         logScale={logScale}
+        onAutoFit={()=>setFitSignal(v=>v+1)}
+        onToggleLog={()=>setLogScale(v=>!v)}
         onVolumeSettings={openVolumeSettings}
         retry={()=>void market.loadCandles()}
       />
