@@ -36,7 +36,7 @@ export async function handleApi(request:Request,env:Env){
   if(request.method==='GET'&&p==='/api/candles'){
     const symbol=symbolOf(u.searchParams.get('symbol'));
     const resolution=(u.searchParams.get('resolution')||'5').toUpperCase();
-    if(!/^(1|2|3|5|10|15|30|45|60|90|120|240|D|5D|W|M|3M)$/.test(resolution))return error('Unsupported resolution.');
+    if(!/^(1|2|3|5|10|15|30|45|60|90|120|240|480|D|5D|W|M|3M)$/.test(resolution))return error('Unsupported resolution.');
     const to=Number(u.searchParams.get('to'))||Math.floor(Date.now()/1000);
     const from=Number(u.searchParams.get('from'))||to-2592000;
     return json(await getCandles(env,symbol,resolution,from,to));
