@@ -22,6 +22,7 @@ export const TIMEFRAMES: Timeframe[] = [
   { label:'90m', resolution:'90', seconds:5400, bars:500, group:'Hours', available:true },
   { label:'2H', resolution:'120', seconds:7200, bars:500, group:'Hours', available:true },
   { label:'4H', resolution:'240', seconds:14400, bars:500, group:'Hours', available:true },
+  { label:'8H', resolution:'480', seconds:28800, bars:450, group:'Hours', available:true },
 
   { label:'1D', resolution:'D', seconds:86400, bars:400, group:'Days', available:true },
   { label:'5D', resolution:'5D', seconds:432000, bars:220, group:'Days', available:true },
