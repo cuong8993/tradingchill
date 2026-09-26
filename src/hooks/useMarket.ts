@@ -44,11 +44,17 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
   },[loadSelectedQuote]);
 
   const loadCandles=useCallback(async()=>{
+    if(!timeframe.available){
+      setCandles([]);
+      setChartError(timeframe.note||'This timeframe is not available from the current real-data providers.');
+      setChartLoading(false);
+      return;
+    }
+
     setChartLoading(true);
     setChartError('');
     const to=Math.floor(Date.now()/1000);
-    const bars=timeframe.resolution==='D'?260:timeframe.resolution==='W'?156:600;
-    const from=to-timeframe.seconds*bars;
+    const from=to-timeframe.seconds*timeframe.bars;
 
     try {
       const result=await api.candles(selected,timeframe.resolution,from,to);
