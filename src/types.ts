@@ -84,4 +84,8 @@ export type Timeframe = {
   label: string;
   resolution: string;
   seconds: number;
+  bars: number;
+  group: 'Seconds' | 'Minutes' | 'Hours' | 'Days' | 'Weeks & Months';
+  available: boolean;
+  note?: string;
 };
