@@ -238,6 +238,7 @@ const twelveInterval:Record<string,string>={
   '60':'1h',
   '120':'2h',
   '240':'4h',
+  '480':'8h',
   'D':'1day',
   'W':'1week',
   'M':'1month',
@@ -264,12 +265,13 @@ const derivedYahooInterval:Record<string,{base:string;seconds:number}>={
   '45':{base:'15m',seconds:2700},
   '120':{base:'60m',seconds:7200},
   '240':{base:'60m',seconds:14400},
+  '480':{base:'60m',seconds:28800},
 };
 
 function requestedBars(resolution:string,from:number,to:number){
   const seconds:Record<string,number>={
     '1':60,'2':120,'3':180,'5':300,'10':600,'15':900,'30':1800,'45':2700,
-    '60':3600,'90':5400,'120':7200,'240':14400,
+    '60':3600,'90':5400,'120':7200,'240':14400,'480':28800,
     'D':86400,'5D':432000,'W':604800,'M':2592000,'3M':7776000
   };
   const step=seconds[resolution]||300;
