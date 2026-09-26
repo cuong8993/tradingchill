@@ -40,40 +40,40 @@ export default function ChartToolbar(p:Props){
   };
 
   return <section className="toolbar">
+    <div className="timeframe-picker">
+      <button className="timeframe-trigger" onClick={()=>setTimeOpen(v=>!v)}>
+        <span>{p.timeframe.label}</span><ChevronDown size={13}/>
+      </button>
+
+      {timeOpen&&<div className="float timeframe-menu">
+        <div className="timeframe-menu-head">
+          <strong>Time interval</strong>
+          <button onClick={()=>setTimeOpen(false)}><X size={15}/></button>
+        </div>
+
+        <div className="timeframe-menu-scroll">
+          {groups.map(({group,items})=><div className="timeframe-group" key={group}>
+            <span className="timeframe-group-title">{group}</span>
+            {items.map(tf=>{
+              const favorite=p.favorites.includes(tf.label);
+              return <div className={`timeframe-option ${!tf.available?'disabled':''}`} key={tf.label} title={tf.note}>
+                <button className="timeframe-select" disabled={!tf.available} onClick={()=>choose(tf)}>
+                  <strong>{tf.label}</strong>
+                  <small>{tf.available?'Real market candles':tf.note}</small>
+                </button>
+                <button className={`timeframe-star ${favorite?'favorite':''}`} disabled={!tf.available} aria-label={favorite?'Remove favorite':'Add favorite'} onClick={()=>p.onToggleFavorite(tf.label)}>
+                  <Star size={14} fill={favorite?'currentColor':'none'}/>
+                </button>
+              </div>;
+            })}
+          </div>)}
+        </div>
+      </div>}
+    </div>
+
     <div className="toolbar-scroll">
       <div className="favorite-timeframes">
         {favorites.map(tf=><button key={tf.label} className={p.timeframe.label===tf.label?'active':''} onClick={()=>p.onTimeframe(tf)}>{tf.label}</button>)}
-      </div>
-
-      <div className="timeframe-picker">
-        <button className="timeframe-trigger" onClick={()=>setTimeOpen(v=>!v)}>
-          <span>{p.timeframe.label}</span><ChevronDown size={13}/>
-        </button>
-
-        {timeOpen&&<div className="float timeframe-menu">
-          <div className="timeframe-menu-head">
-            <strong>Time interval</strong>
-            <button onClick={()=>setTimeOpen(false)}><X size={15}/></button>
-          </div>
-
-          <div className="timeframe-menu-scroll">
-            {groups.map(({group,items})=><div className="timeframe-group" key={group}>
-              <span className="timeframe-group-title">{group}</span>
-              {items.map(tf=>{
-                const favorite=p.favorites.includes(tf.label);
-                return <div className={`timeframe-option ${!tf.available?'disabled':''}`} key={tf.label} title={tf.note}>
-                  <button className="timeframe-select" disabled={!tf.available} onClick={()=>choose(tf)}>
-                    <strong>{tf.label}</strong>
-                    <small>{tf.available?'Real market candles':tf.note}</small>
-                  </button>
-                  <button className={`timeframe-star ${favorite?'favorite':''}`} disabled={!tf.available} aria-label={favorite?'Remove favorite':'Add favorite'} onClick={()=>p.onToggleFavorite(tf.label)}>
-                    <Star size={14} fill={favorite?'currentColor':'none'}/>
-                  </button>
-                </div>;
-              })}
-            </div>)}
-          </div>
-        </div>}
       </div>
 
       <div className="divider"/>
