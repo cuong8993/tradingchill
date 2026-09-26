@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { money, pct, QUOTE_BATCH_SIZE } from '../config';
 import type { Quote } from '../types';
 
-type SortKey='symbol'|'price'|'extendedPrice'|'changePercent';
+type SortKey='symbol'|'price'|'changePercent'|'extendedPercent';
 type SortDirection='asc'|'desc';
 
 type Props={
@@ -19,6 +19,13 @@ type Props={
 function directionClass(value:number|null|undefined,reference:number|null|undefined){
   if(value==null||reference==null||!Number.isFinite(value)||!Number.isFinite(reference))return '';
   return value>=reference?'up':'down';
+}
+
+function extendedPercent(q?:Quote){
+  if(!q||q.extendedPrice==null)return null;
+  const reference=q.regularClose??q.price;
+  if(!Number.isFinite(reference)||reference===0)return null;
+  return ((q.extendedPrice-reference)/reference)*100;
 }
 
 export default function Watchlist(p:Props){
@@ -41,8 +48,8 @@ export default function Watchlist(p:Props){
 
       const qa=p.quotes[a];
       const qb=p.quotes[b];
-      const av=sort.key==='extendedPrice'?qa?.extendedPrice:qa?.[sort.key];
-      const bv=sort.key==='extendedPrice'?qb?.extendedPrice:qb?.[sort.key];
+      const av=sort.key==='extendedPercent'?extendedPercent(qa):qa?.[sort.key];
+      const bv=sort.key==='extendedPercent'?extendedPercent(qb):qb?.[sort.key];
 
       const aMissing=av==null||!Number.isFinite(Number(av));
       const bMissing=bv==null||!Number.isFinite(Number(bv));
@@ -67,23 +74,23 @@ export default function Watchlist(p:Props){
       {header('symbol','Symbol')}
       {header('price','Last')}
       {header('changePercent','Chg%')}
-      {header('extendedPrice','Ext')}
+      {header('extendedPercent','Ext%')}
     </div>
 
     <div className="watch-items">
       {sortedSymbols.map(s=>{
         const q=p.quotes[s];
-        const extTitle=q?.extendedSession?`${q.extendedSession.toUpperCase()} market`:undefined;
+        const ext=extendedPercent(q);
+        const extTitle=q?.extendedSession?`${q.extendedSession.toUpperCase()} market: ${money(q.extendedPrice)}`:undefined;
         const lastClass=directionClass(q?.price,q?.previousClose);
-        const extReference=q?.regularClose??q?.price;
-        const extClass=directionClass(q?.extendedPrice,extReference);
+        const extClass=ext==null?'':ext>=0?'up':'down';
         const changeClass=(q?.changePercent??0)>=0?'up':'down';
 
         return <button className={`watch-row ${p.selected===s?'active':''}`} key={s} onClick={()=>p.onSelect(s)}>
           <span className="ticker"><b>{s.slice(0,1)}</b><strong>{s}</strong></span>
           <span className={`numeric ${lastClass}`}>{money(q?.price)}</span>
           <span className={`numeric ${changeClass}`}>{pct(q?.changePercent)}</span>
-          <span className={`numeric ext-price ${extClass}`} title={extTitle}>{money(q?.extendedPrice)}</span>
+          <span className={`numeric ext-price ${extClass}`} title={extTitle}>{pct(ext)}</span>
           <i className="remove-symbol" onClick={e=>{e.stopPropagation();p.onRemove(s)}}><Trash2 size={13}/></i>
         </button>;
       })}
