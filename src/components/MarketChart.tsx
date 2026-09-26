@@ -112,7 +112,7 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
         background: { type: ColorType.Solid, color: '#0c111b' },
         textColor: '#8f9bad',
         fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-        attributionLogo: true,
+        attributionLogo: false,
         panes: {
           separatorColor: '#1b2331',
           separatorHoverColor: '#2a3548',
