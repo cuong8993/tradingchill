@@ -230,15 +230,48 @@ export async function getQuotes(env:Env,symbols:string[]){
 }
 
 const twelveInterval:Record<string,string>={
-  '1':'1min','5':'5min','15':'15min','30':'30min','60':'1h','D':'1day','W':'1week','M':'1month'
+  '1':'1min',
+  '5':'5min',
+  '15':'15min',
+  '30':'30min',
+  '45':'45min',
+  '60':'1h',
+  '120':'2h',
+  '240':'4h',
+  'D':'1day',
+  'W':'1week',
+  'M':'1month',
 };
 
 const yahooInterval:Record<string,string>={
-  '1':'1m','5':'5m','15':'15m','30':'30m','60':'60m','D':'1d','W':'1wk','M':'1mo'
+  '1':'1m',
+  '2':'2m',
+  '5':'5m',
+  '15':'15m',
+  '30':'30m',
+  '60':'60m',
+  '90':'90m',
+  'D':'1d',
+  '5D':'5d',
+  'W':'1wk',
+  'M':'1mo',
+  '3M':'3mo',
+};
+
+const derivedYahooInterval:Record<string,{base:string;seconds:number}>={
+  '3':{base:'1m',seconds:180},
+  '10':{base:'5m',seconds:600},
+  '45':{base:'15m',seconds:2700},
+  '120':{base:'60m',seconds:7200},
+  '240':{base:'60m',seconds:14400},
 };
 
 function requestedBars(resolution:string,from:number,to:number){
-  const seconds:Record<string,number>={'1':60,'5':300,'15':900,'30':1800,'60':3600,'D':86400,'W':604800,'M':2592000};
+  const seconds:Record<string,number>={
+    '1':60,'2':120,'3':180,'5':300,'10':600,'15':900,'30':1800,'45':2700,
+    '60':3600,'90':5400,'120':7200,'240':14400,
+    'D':86400,'5D':432000,'W':604800,'M':2592000,'3M':7776000
+  };
   const step=seconds[resolution]||300;
   return Math.max(30,Math.min(5000,Math.ceil((to-from)/step)+10));
 }
@@ -347,17 +380,43 @@ async function fetchYahooHost(host:string,symbol:string,interval:string,from:num
   return candles;
 }
 
-async function yahooCandles(symbol:string,resolution:string,from:number,to:number):Promise<Candle[]>{
-  const interval=yahooInterval[resolution];
-  if(!interval)throw new Error('Unsupported chart interval.');
+function aggregateCandles(candles:Candle[],bucketSeconds:number):Candle[]{
+  const buckets=new Map<number,Candle>();
+  for(const candle of candles){
+    const bucket=Math.floor(candle.time/bucketSeconds)*bucketSeconds;
+    const current=buckets.get(bucket);
+    if(!current){
+      buckets.set(bucket,{...candle,time:bucket});
+      continue;
+    }
+    current.high=Math.max(current.high,candle.high);
+    current.low=Math.min(current.low,candle.low);
+    current.close=candle.close;
+    current.volume+=candle.volume;
+  }
+  return [...buckets.values()].sort((a,b)=>a.time-b.time);
+}
 
+async function fetchYahooCandles(symbol:string,interval:string,from:number,to:number):Promise<Candle[]>{
   let lastError:unknown;
   for(const host of YAHOO_CHART_HOSTS){
     try{return await fetchYahooHost(host,symbol,interval,from,to);}
     catch(error){lastError=error;}
   }
-
   throw lastError instanceof Error?lastError:new Error('Real candle provider unavailable.');
+}
+
+async function yahooCandles(symbol:string,resolution:string,from:number,to:number):Promise<Candle[]>{
+  const direct=yahooInterval[resolution];
+  if(direct)return fetchYahooCandles(symbol,direct,from,to);
+
+  const derived=derivedYahooInterval[resolution];
+  if(derived){
+    const base=await fetchYahooCandles(symbol,derived.base,from,to);
+    return aggregateCandles(base,derived.seconds);
+  }
+
+  throw new Error('Unsupported chart interval.');
 }
 
 export async function getCandles(env:Env,symbol:string,resolution:string,from:number,to:number){
