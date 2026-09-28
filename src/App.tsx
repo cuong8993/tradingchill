@@ -1,11 +1,13 @@
-import { Check } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Check, PanelLeftOpen } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { AlertDrawer, AlertModal } from './components/AlertUI';
 import ChartToolbar from './components/ChartToolbar';
 import TopBar from './components/TopBar';
 import VolumeSettingsModal from './components/VolumeSettingsModal';
 import Watchlist from './components/Watchlist';
 import {
+  CANDLE_DOWN_COLOR,
+  CANDLE_UP_COLOR,
   DEFAULT_INDICATORS,
   DEFAULT_TIMEFRAME,
   DEFAULT_TIMEFRAME_FAVORITES,
@@ -26,6 +28,8 @@ export default function App(){
   const [indicators,setIndicators]=useState<IndicatorSettings>(()=>({...DEFAULT_INDICATORS,...stored('mv.indicators',DEFAULT_INDICATORS)}));
   const [volumeMA,setVolumeMA]=useState<VolumeMASettings>(()=>({...DEFAULT_VOLUME_MA,...stored('tc.volumeMA',DEFAULT_VOLUME_MA)}));
   const [logScale,setLogScale]=useState(()=>stored('tc.logScale',false));
+  const [watchlistWidth,setWatchlistWidth]=useState<number|null>(()=>stored<number|null>('tc.watchlistWidth',null));
+  const [watchlistHidden,setWatchlistHidden]=useState(false);
   const [fitSignal,setFitSignal]=useState(0);
   const [volumeSettingsOpen,setVolumeSettingsOpen]=useState(false);
   const [searchOpen,setSearchOpen]=useState(false),[searchText,setSearchText]=useState(''),[indicatorOpen,setIndicatorOpen]=useState(false);
@@ -43,6 +47,10 @@ export default function App(){
   useEffect(()=>localStorage.setItem('tc.volumeMA',JSON.stringify(volumeMA)),[volumeMA]);
   useEffect(()=>localStorage.setItem('tc.logScale',JSON.stringify(logScale)),[logScale]);
   useEffect(()=>localStorage.setItem('tc.timeframeFavorites',JSON.stringify(timeframeFavorites)),[timeframeFavorites]);
+  useEffect(()=>{
+    if(watchlistWidth==null)localStorage.removeItem('tc.watchlistWidth');
+    else localStorage.setItem('tc.watchlistWidth',JSON.stringify(Math.round(watchlistWidth)));
+  },[watchlistWidth]);
   useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(id)},[toast]);
   useEffect(()=>{const id=setTimeout(()=>void market.search(searchText),220);return()=>clearTimeout(id)},[searchText,market.search]);
 
@@ -51,8 +59,13 @@ export default function App(){
   const select=(s:string)=>{setSelected(s);setMobileWatch(false)};
   const selectFromDropdown=(s:string)=>{setSelected(s);setSearchOpen(false);setSearchText('')};
   const toggleTimeframeFavorite=(label:string)=>setTimeframeFavorites(current=>current.includes(label)?current.filter(x=>x!==label):[...current,label]);
+  const shellStyle={
+    '--watchlist-width':watchlistWidth==null?'clamp(270px,23vw,390px)':`${Math.round(watchlistWidth)}px`,
+    '--green':CANDLE_UP_COLOR,
+    '--red':CANDLE_DOWN_COLOR,
+  } as CSSProperties;
 
-  return <div className="app-shell">
+  return <div className={`app-shell ${watchlistHidden?'watchlist-hidden':''}`} style={shellStyle}>
     <TopBar
       selected={selected}
       watchlist={watchlist}
@@ -62,7 +75,7 @@ export default function App(){
       searchText={searchText}
       results={market.searchResults}
       loading={market.searchLoading}
-      onMenu={()=>setMobileWatch(v=>!v)}
+      onMenu={()=>{setWatchlistHidden(false);setMobileWatch(v=>!v)}}
       onSearchOpen={()=>setSearchOpen(v=>!v)}
       onSearchText={setSearchText}
       onSelect={selectFromDropdown}
@@ -70,9 +83,21 @@ export default function App(){
       onAlerts={()=>setAlertsOpen(v=>!v)}
     />
 
-    <Watchlist symbols={watchlist} selected={selected} quotes={market.quotes} mobileOpen={mobileWatch} onSelect={select} onRemove={remove} onAdd={()=>setSearchOpen(true)}/>
+    <Watchlist
+      symbols={watchlist}
+      selected={selected}
+      quotes={market.quotes}
+      mobileOpen={mobileWatch}
+      onSelect={select}
+      onRemove={remove}
+      onAdd={()=>setSearchOpen(true)}
+      onHide={()=>setWatchlistHidden(true)}
+      onPanelWidth={setWatchlistWidth}
+      onAutoFit={()=>setWatchlistWidth(null)}
+    />
 
     <main className="workspace">
+      {watchlistHidden&&<button className="restore-watchlist" title="Show watchlist" onClick={()=>setWatchlistHidden(false)}><PanelLeftOpen size={15}/></button>}
       <MarketHeader symbol={selected} quote={quote}/>
       <ChartToolbar
         timeframe={timeframe}
@@ -93,6 +118,7 @@ export default function App(){
         source={market.chartSource}
         note={market.chartNote}
         quote={quote}
+        candleSeconds={timeframe.seconds}
         indicators={indicators}
         alerts={selectedAlerts}
         volumeMA={volumeMA}
