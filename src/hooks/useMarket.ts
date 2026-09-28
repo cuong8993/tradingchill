@@ -103,6 +103,37 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
 
   useEffect(()=>{ void loadCandles(); },[loadCandles]);
 
+  const syncLatestCandles=useCallback(async()=>{
+    if(!timeframe.available||document.visibilityState==='hidden')return;
+    const to=Math.floor(Date.now()/1000);
+    const from=to-timeframe.seconds*8;
+    try{
+      const result=await api.candles(selected,timeframe.resolution,from,to);
+      setChartSource(result.source);
+      setChartNote(result.note||'');
+      setCandles(previous=>{
+        const incoming=result.candles;
+        if(!incoming.length)return previous;
+        if(!previous.length)return incoming;
+
+        const previousLast=previous[previous.length-1]?.time??0;
+        const incomingLast=incoming[incoming.length-1]?.time??0;
+        if(incomingLast<=previousLast)return previous;
+
+        const merged=new Map(previous.map(candle=>[candle.time,candle]));
+        incoming.forEach(candle=>merged.set(candle.time,candle));
+        return [...merged.values()].sort((a,b)=>a.time-b.time);
+      });
+    }catch{}
+  },[selected,timeframe]);
+
+  useEffect(()=>{
+    if(!timeframe.available)return;
+    const refreshMs=timeframe.seconds<=900?15000:60000;
+    const id=setInterval(()=>void syncLatestCandles(),refreshMs);
+    return()=>clearInterval(id);
+  },[syncLatestCandles,timeframe.available,timeframe.seconds]);
+
   const search=useCallback(async(q:string)=>{
     if(!q.trim()){setSearchResults([]);return;}
     setSearchLoading(true);
