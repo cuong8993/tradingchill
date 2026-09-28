@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { QUOTE_BATCH_SIZE } from '../config';
+import {
+  QUOTE_BATCH_SIZE,
+  SELECTED_ENRICHED_REFRESH_MS,
+  SELECTED_QUOTE_REFRESH_MS,
+  WATCHLIST_REFRESH_MS,
+} from '../config';
 import type { Candle, CandleSource, Quote, SearchResult, Timeframe } from '../types';
+
+function mergeFastQuote(previous:Quote|undefined,next:Quote):Quote{
+  if(!previous)return next;
+  return {
+    ...next,
+    marketState:previous.marketState??next.marketState,
+    regularClose:previous.regularClose??next.regularClose,
+    extendedPrice:previous.extendedPrice??next.extendedPrice,
+    extendedSession:previous.extendedSession??next.extendedSession,
+    preMarketPrice:previous.preMarketPrice??next.preMarketPrice,
+    postMarketPrice:previous.postMarketPrice??next.postMarketPrice,
+  };
+}
 
 export function useMarket(watchlist:string[], selected:string, timeframe:Timeframe){
   const [quotes,setQuotes]=useState<Record<string,Quote>>({});
@@ -26,7 +44,7 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
 
   useEffect(()=>{
     void loadQuotes();
-    const id=setInterval(()=>void loadQuotes(),60000);
+    const id=setInterval(()=>void loadQuotes(),WATCHLIST_REFRESH_MS);
     return()=>clearInterval(id);
   },[loadQuotes]);
 
@@ -39,9 +57,23 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
 
   useEffect(()=>{
     void loadSelectedQuote();
-    const id=setInterval(()=>void loadSelectedQuote(),10000);
+    const id=setInterval(()=>void loadSelectedQuote(),SELECTED_ENRICHED_REFRESH_MS);
     return()=>clearInterval(id);
   },[loadSelectedQuote]);
+
+  const loadFastSelectedQuote=useCallback(async()=>{
+    if(document.visibilityState==='hidden')return;
+    try{
+      const q=await api.fastQuote(selected);
+      setQuotes(p=>({...p,[q.symbol]:mergeFastQuote(p[q.symbol],q)}));
+    }catch{}
+  },[selected]);
+
+  useEffect(()=>{
+    void loadFastSelectedQuote();
+    const id=setInterval(()=>void loadFastSelectedQuote(),SELECTED_QUOTE_REFRESH_MS);
+    return()=>clearInterval(id);
+  },[loadFastSelectedQuote]);
 
   const loadCandles=useCallback(async()=>{
     if(!timeframe.available){
