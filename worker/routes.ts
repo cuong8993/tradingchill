@@ -1,5 +1,5 @@
 import { ensureSchema } from './db';
-import { getCandles, getQuote, getQuotes, searchLive } from './provider';
+import { getCandles, getFastQuote, getQuote, getQuotes, searchLive } from './provider';
 import { error, json, symbolOf, type Env } from './types';
 const MAX_QUOTES_PER_REQUEST=50;
 
@@ -20,6 +20,11 @@ export async function handleApi(request:Request,env:Env){
     if(!env.FINNHUB_API_KEY)return error('FINNHUB_API_KEY is not configured.',503);
     const r=await searchLive(env,q);
     return json((r.result||[]).slice(0,30));
+  }
+
+  if(request.method==='GET'&&p==='/api/quote-fast'){
+    if(!env.FINNHUB_API_KEY)return error('FINNHUB_API_KEY is not configured.',503);
+    return json(await getFastQuote(env,symbolOf(u.searchParams.get('symbol'))));
   }
 
   if(request.method==='GET'&&p==='/api/quote'){
