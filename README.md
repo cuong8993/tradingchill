@@ -9,18 +9,21 @@ TradingChill uses **real market data only**. There is no demo quote generator an
 - **Finnhub** provides live quotes and symbol search.
 - **Yahoo Finance chart data** provides real OHLCV candles without requiring a second API key.
 - If `TWELVEDATA_API_KEY` is configured, Twelve Data is preferred for chart candles.
-- The live Finnhub quote is drawn on the chart as a separate `LIVE` price line.
+- Finnhub updates the selected symbol quickly and the active real candle is updated in place during the regular session; no duplicate custom `LIVE` price line is drawn.
 
 If a real data provider is unavailable, TradingChill shows an error instead of inventing market data.
 
 ## Features
 
 - Responsive desktop/mobile trading workspace
+- Auto-fit, resizable and hideable desktop watchlist
+- Draggable watchlist column widths with Auto Fit reset
 - Watchlist with no artificial client-side symbol cap
 - Quote requests batched for large watchlists
 - Watchlist ticker dropdown and symbol search
 - Real candlestick charts
-- Timeframes: 1m, 5m, 15m, 1H, 1D, 1W
+- Expanded minute, hour, daily, weekly and monthly timeframes using real provider data
+- Selected-symbol fast quote refresh (3s), periodic extended-session enrichment, and automatic real-candle synchronization
 - Multiple indicators enabled simultaneously
 - EMA 9 / 20 / 50
 - SMA 10 / 20 / 50 / 200
