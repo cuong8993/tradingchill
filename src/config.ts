@@ -1,5 +1,10 @@
 import type { IndicatorSettings, Timeframe, VolumeMASettings } from './types';
 
+export const CANDLE_UP_COLOR = '#22c58b';
+export const CANDLE_DOWN_COLOR = '#f45b69';
+export const SELECTED_QUOTE_REFRESH_MS = 3000;
+export const SELECTED_ENRICHED_REFRESH_MS = 15000;
+export const WATCHLIST_REFRESH_MS = 60000;
 export const QUOTE_BATCH_SIZE = 25;
 export const DEFAULT_WATCHLIST = ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AMD','SPY','QQQ'];
 
