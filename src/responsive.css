@@ -14,6 +14,7 @@
   .mobile-menu{display:block;color:var(--text);padding:0 4px}
   .watchlist{position:fixed;left:0;top:58px;bottom:0;width:min(330px,90vw);z-index:70;transform:translateX(-101%);transition:.2s;box-shadow:25px 0 60px #0009}
   .watchlist.open{transform:none}
+  .watchlist-resizer,.desktop-watch-action,.restore-watchlist{display:none}
   .workspace{
     grid-column:1;
     grid-row:2;
