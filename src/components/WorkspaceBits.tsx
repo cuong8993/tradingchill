@@ -21,7 +21,7 @@ export function MarketHeader({symbol,quote}:{symbol:string;quote?:Quote}){
 }
 
 export function ChartCard({
-  loading,error,candles,source,note,quote,indicators,alerts,volumeMA,fitSignal,logScale,onAutoFit,onToggleLog,onVolumeSettings,retry
+  loading,error,candles,source,note,quote,candleSeconds,indicators,alerts,volumeMA,fitSignal,logScale,onAutoFit,onToggleLog,onVolumeSettings,retry
 }:{
   loading:boolean;
   error:string;
@@ -29,6 +29,7 @@ export function ChartCard({
   source:CandleSource;
   note:string;
   quote?:Quote;
+  candleSeconds:number;
   indicators:IndicatorSettings;
   alerts:PriceAlert[];
   volumeMA:VolumeMASettings;
@@ -46,6 +47,7 @@ export function ChartCard({
       <MarketChart
         candles={candles}
         quote={quote}
+        candleSeconds={candleSeconds}
         indicators={indicators}
         alerts={alerts}
         volumeMA={volumeMA}
