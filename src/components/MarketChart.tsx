@@ -11,10 +11,12 @@ import {
 } from 'lightweight-charts';
 import type { Candle, IndicatorSettings, PriceAlert, Quote, VolumeMASettings } from '../types';
 import { atr, bollinger, ema, macd, rsi, sma, stochastic, vwap } from '../lib/indicators';
+import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR } from '../config';
 
 type Props = {
   candles: Candle[];
   quote?: Quote;
+  candleSeconds: number;
   indicators: IndicatorSettings;
   alerts: PriceAlert[];
   volumeMA: VolumeMASettings;
@@ -79,7 +81,7 @@ function addQuoteLines(price:any,quote?:Quote){
   };
 
   if(state==='REGULAR'){
-    add(quote.price,'LIVE','#22c58b');
+    return lines;
   }else if(state==='PRE'||state.includes('POST')||state==='CLOSED'){
     add(quote.regularClose??quote.price,'CLOSE','#aeb9ca');
     if(quote.extendedSession==='pre')add(quote.extendedPrice,'PRE','#5ec8e5',2);
@@ -93,7 +95,7 @@ function addQuoteLines(price:any,quote?:Quote){
   return lines;
 }
 
-export default function MarketChart({ candles, quote, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings }: Props) {
+export default function MarketChart({ candles, quote, candleSeconds, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const chartRef=useRef<ReturnType<typeof createChart>|null>(null);
   const priceRef=useRef<any>(null);
@@ -136,12 +138,12 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
     });
 
     const price = chart.addSeries(CandlestickSeries, {
-      upColor: '#22c58b',
-      downColor: '#f45b69',
-      borderUpColor: '#22c58b',
-      borderDownColor: '#f45b69',
-      wickUpColor: '#22c58b',
-      wickDownColor: '#f45b69',
+      upColor: CANDLE_UP_COLOR,
+      downColor: CANDLE_DOWN_COLOR,
+      borderUpColor: CANDLE_UP_COLOR,
+      borderDownColor: CANDLE_DOWN_COLOR,
+      wickUpColor: CANDLE_UP_COLOR,
+      wickDownColor: CANDLE_DOWN_COLOR,
       priceLineVisible: true,
       lastValueVisible: true,
     });
@@ -325,6 +327,24 @@ export default function MarketChart({ candles, quote, indicators, alerts, volume
     }
     quoteLinesRef.current=addQuoteLines(price,quote);
   },[quote?.price,quote?.regularClose,quote?.extendedPrice,quote?.extendedSession,quote?.marketState]);
+
+  useEffect(()=>{
+    const price=priceRef.current;
+    if(!price||!quote||!candles.length||!Number.isFinite(quote.price))return;
+    if((quote.marketState||'').toUpperCase()!=='REGULAR')return;
+
+    const last=candles[candles.length-1];
+    const timestamp=quote.timestamp||Math.floor(Date.now()/1000);
+    if(timestamp<last.time||timestamp>=last.time+Math.max(1,candleSeconds))return;
+
+    price.update({
+      time:asTime(last.time),
+      open:last.open,
+      high:Math.max(last.high,quote.price),
+      low:Math.min(last.low,quote.price),
+      close:quote.price,
+    });
+  },[quote?.price,quote?.timestamp,quote?.marketState,candles,candleSeconds]);
 
   useEffect(()=>{
     const chart=chartRef.current;
