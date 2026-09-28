@@ -208,6 +208,10 @@ function enrichQuote(base:Quote,yahoo?:YahooQuote):Quote{
   };
 }
 
+export async function getFastQuote(env:Env,symbol:string){
+  return finnhubQuote(env,symbol);
+}
+
 export async function getQuote(env:Env,symbol:string){
   const [base,extended]=await Promise.all([
     finnhubQuote(env,symbol),
