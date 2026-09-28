@@ -13,6 +13,7 @@ export const api = {
   config: () => json<{ mode: 'live' | 'offline'; chartProvider: 'twelvedata' | 'yahoo'; database: boolean }>('/api/config'),
   search: (q: string) => json<SearchResult[]>(`/api/search?q=${encodeURIComponent(q)}`),
   quote: (symbol: string) => json<Quote>(`/api/quote?symbol=${encodeURIComponent(symbol)}`),
+  fastQuote: (symbol: string) => json<Quote>(`/api/quote-fast?symbol=${encodeURIComponent(symbol)}`),
   quotes: (symbols: string[]) => json<Quote[]>(`/api/quotes?symbols=${encodeURIComponent(symbols.join(','))}`),
   candles: (symbol: string, resolution: string, from: number, to: number) =>
     json<CandleResponse>(`/api/candles?symbol=${encodeURIComponent(symbol)}&resolution=${encodeURIComponent(resolution)}&from=${from}&to=${to}`),
