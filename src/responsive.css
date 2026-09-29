@@ -68,7 +68,7 @@
 @media(max-height:820px) and (min-width:851px){
   .app-shell{grid-template-rows:50px minmax(0,1fr)}
   .topbar{padding:0 11px;gap:12px}
-  .brand-mark{width:28px;height:28px;flex-basis:28px}
+  .brand-mark{width:37px;height:37px;flex-basis:37px}
   .brand strong{font-size:14px}
   .search-trigger,.icon{height:31px}
   .workspace{grid-template-rows:66px 40px minmax(0,1fr) 24px}
