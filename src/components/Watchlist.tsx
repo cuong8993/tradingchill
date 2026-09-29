@@ -16,10 +16,10 @@ type Props={
   onAdd:()=>void;
   onHide:()=>void;
   onPanelWidth:(width:number)=>void;
-  onAutoFit:(width:number)=>void;
+  onAutoFit:()=>void;
 };
 
-const AUTO_COLUMNS=[36,22,21,21];
+const AUTO_COLUMNS=[42,19,19,20];
 const MIN_COLUMNS=[24,14,14,14];
 
 function directionClass(value:number|null|undefined,reference:number|null|undefined){
@@ -44,9 +44,9 @@ export default function Watchlist(p:Props){
   const asideRef=useRef<HTMLElement>(null);
   const headerRef=useRef<HTMLDivElement>(null);
   const [sort,setSort]=useState<{key:SortKey;direction:SortDirection}>({key:'symbol',direction:'asc'});
-  const [columns,setColumns]=useState<number[]>(()=>validColumns(stored<unknown>('tc.watchColumns',AUTO_COLUMNS)));
+  const [columns,setColumns]=useState<number[]>(()=>validColumns(stored<unknown>('tc.watchColumns.v2',AUTO_COLUMNS)));
 
-  useEffect(()=>localStorage.setItem('tc.watchColumns',JSON.stringify(columns)),[columns]);
+  useEffect(()=>localStorage.setItem('tc.watchColumns.v2',JSON.stringify(columns)),[columns]);
 
   const changeSort=(key:SortKey)=>{
     setSort(current=>{
@@ -129,26 +129,9 @@ export default function Watchlist(p:Props){
   };
 
   const autoFit=()=>{
-    const canvas=document.createElement('canvas');
-    const context=canvas.getContext('2d');
-    if(context)context.font='600 10px Inter, system-ui, sans-serif';
-    const measure=(text:string)=>context?.measureText(text).width??text.length*6;
-
-    const symbolWidth=Math.max(92,...p.symbols.map(symbol=>measure(symbol)+42));
-    const lastWidth=Math.max(62,...p.symbols.map(symbol=>measure(money(p.quotes[symbol]?.price))+18));
-    const changeWidth=Math.max(66,...p.symbols.map(symbol=>measure(pct(p.quotes[symbol]?.changePercent))+18));
-    const extWidth=Math.max(66,...p.symbols.map(symbol=>measure(pct(extendedPercent(p.quotes[symbol])))+18));
-    const measured=[symbolWidth,lastWidth,changeWidth,extWidth];
-
-    setColumns(measured);
-
-    const gaps=18;
-    const horizontalPadding=24;
-    const scrollbarAllowance=14;
-    const desired=measured.reduce((sum,value)=>sum+value,0)+gaps+horizontalPadding+scrollbarAllowance;
-    const max=Math.min(520,Math.max(320,window.innerWidth*.42));
-    const width=Math.max(285,Math.min(max,desired));
-    p.onAutoFit(width);
+    setColumns(AUTO_COLUMNS);
+    localStorage.removeItem('tc.watchColumns.v2');
+    p.onAutoFit();
   };
 
   const header=(key:SortKey,label:string,index:number)=><button className={sort.key===key?'sorted':''} onClick={()=>changeSort(key)}>
