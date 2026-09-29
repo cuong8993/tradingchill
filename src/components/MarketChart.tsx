@@ -11,7 +11,6 @@ import {
 } from 'lightweight-charts';
 import type { Candle, ChartSettings, IndicatorSettings, PriceAlert, Quote, VolumeMASettings } from '../types';
 import { atr, bollinger, ema, macd, rsi, sma, stochastic, vwap } from '../lib/indicators';
-import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR } from '../config';
 
 type Props = {
   candles: Candle[];
