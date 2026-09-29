@@ -1,13 +1,13 @@
 import { Check, PanelLeftOpen } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { AlertDrawer, AlertModal } from './components/AlertUI';
+import ChartSettingsModal from './components/ChartSettingsModal';
 import ChartToolbar from './components/ChartToolbar';
 import TopBar from './components/TopBar';
 import VolumeSettingsModal from './components/VolumeSettingsModal';
 import Watchlist from './components/Watchlist';
 import {
-  CANDLE_DOWN_COLOR,
-  CANDLE_UP_COLOR,
+  DEFAULT_CHART_SETTINGS,
   DEFAULT_INDICATORS,
   DEFAULT_TIMEFRAME,
   DEFAULT_TIMEFRAME_FAVORITES,
@@ -17,7 +17,7 @@ import {
 } from './config';
 import { useAlerts } from './hooks/useAlerts';
 import { useMarket } from './hooks/useMarket';
-import type { IndicatorSettings, Timeframe, VolumeMASettings } from './types';
+import type { ChartSettings, IndicatorSettings, Timeframe, VolumeMASettings } from './types';
 import { ChartCard, MarketHeader } from './components/WorkspaceBits';
 
 export default function App(){
@@ -28,16 +28,19 @@ export default function App(){
   const [indicators,setIndicators]=useState<IndicatorSettings>(()=>({...DEFAULT_INDICATORS,...stored('mv.indicators',DEFAULT_INDICATORS)}));
   const [volumeMA,setVolumeMA]=useState<VolumeMASettings>(()=>({...DEFAULT_VOLUME_MA,...stored('tc.volumeMA',DEFAULT_VOLUME_MA)}));
   const [logScale,setLogScale]=useState(()=>stored('tc.logScale',false));
+  const [chartSettings,setChartSettings]=useState<ChartSettings>(()=>({...DEFAULT_CHART_SETTINGS,...stored('tc.chartSettings',DEFAULT_CHART_SETTINGS)}));
   const [watchlistWidth,setWatchlistWidth]=useState<number|null>(()=>stored<number|null>('tc.watchlistWidth',null));
   const [watchlistHidden,setWatchlistHidden]=useState(false);
   const [fitSignal,setFitSignal]=useState(0);
   const [volumeSettingsOpen,setVolumeSettingsOpen]=useState(false);
+  const [chartSettingsOpen,setChartSettingsOpen]=useState(false);
   const [searchOpen,setSearchOpen]=useState(false),[searchText,setSearchText]=useState(''),[indicatorOpen,setIndicatorOpen]=useState(false);
   const [mobileWatch,setMobileWatch]=useState(false),[alertsOpen,setAlertsOpen]=useState(false),[alertModal,setAlertModal]=useState(false),[toast,setToast]=useState('');
 
   const market=useMarket(watchlist,selected,timeframe), quote=market.quotes[selected];
   const toastFn=useCallback((s:string)=>setToast(s),[]);
   const openVolumeSettings=useCallback(()=>setVolumeSettingsOpen(true),[]);
+  const openChartSettings=useCallback(()=>setChartSettingsOpen(true),[]);
   const alertState=useAlerts(market.config.database,selected,quote,market.quotes,toastFn);
   const selectedAlerts=useMemo(()=>alertState.alerts.filter(a=>a.symbol===selected&&a.active),[alertState.alerts,selected]);
 
@@ -46,6 +49,7 @@ export default function App(){
   useEffect(()=>localStorage.setItem('mv.indicators',JSON.stringify(indicators)),[indicators]);
   useEffect(()=>localStorage.setItem('tc.volumeMA',JSON.stringify(volumeMA)),[volumeMA]);
   useEffect(()=>localStorage.setItem('tc.logScale',JSON.stringify(logScale)),[logScale]);
+  useEffect(()=>localStorage.setItem('tc.chartSettings',JSON.stringify(chartSettings)),[chartSettings]);
   useEffect(()=>localStorage.setItem('tc.timeframeFavorites',JSON.stringify(timeframeFavorites)),[timeframeFavorites]);
   useEffect(()=>{
     if(watchlistWidth==null)localStorage.removeItem('tc.watchlistWidth');
@@ -60,9 +64,9 @@ export default function App(){
   const selectFromDropdown=(s:string)=>{setSelected(s);setSearchOpen(false);setSearchText('')};
   const toggleTimeframeFavorite=(label:string)=>setTimeframeFavorites(current=>current.includes(label)?current.filter(x=>x!==label):[...current,label]);
   const shellStyle={
-    '--watchlist-width':watchlistWidth==null?'clamp(270px,23vw,390px)':`${Math.round(watchlistWidth)}px`,
-    '--green':CANDLE_UP_COLOR,
-    '--red':CANDLE_DOWN_COLOR,
+    '--watchlist-width':watchlistHidden?'0px':watchlistWidth==null?'clamp(285px,24vw,420px)':`${Math.round(watchlistWidth)}px`,
+    '--green':chartSettings.upColor,
+    '--red':chartSettings.downColor,
   } as CSSProperties;
 
   return <div className={`app-shell ${watchlistHidden?'watchlist-hidden':''}`} style={shellStyle}>
@@ -93,7 +97,7 @@ export default function App(){
       onAdd={()=>setSearchOpen(true)}
       onHide={()=>setWatchlistHidden(true)}
       onPanelWidth={setWatchlistWidth}
-      onAutoFit={()=>setWatchlistWidth(null)}
+      onAutoFit={width=>setWatchlistWidth(width)}
     />
 
     <main className="workspace">
@@ -119,6 +123,7 @@ export default function App(){
         note={market.chartNote}
         quote={quote}
         candleSeconds={timeframe.seconds}
+        chartSettings={chartSettings}
         indicators={indicators}
         alerts={selectedAlerts}
         volumeMA={volumeMA}
@@ -127,6 +132,7 @@ export default function App(){
         onAutoFit={()=>setFitSignal(v=>v+1)}
         onToggleLog={()=>setLogScale(v=>!v)}
         onVolumeSettings={openVolumeSettings}
+        onChartSettings={openChartSettings}
         retry={()=>void market.loadCandles()}
       />
       <footer><span>{market.config.mode==='live'?'Live Finnhub quotes':'Live quote feed offline'}</span><span>{market.config.chartProvider==='twelvedata'?'Twelve Data charts':'Yahoo real-market charts'} · {watchlist.length} symbols</span></footer>
@@ -135,6 +141,7 @@ export default function App(){
     {alertsOpen&&<AlertDrawer alerts={alertState.alerts} onClose={()=>setAlertsOpen(false)} onNew={()=>setAlertModal(true)} onDelete={a=>void alertState.remove(a)}/>}
     {alertModal&&<AlertModal symbol={selected} price={quote?.price??0} onClose={()=>setAlertModal(false)} onCreate={async(d,t,n)=>{await alertState.create(d,t,n);toastFn(`Alert created for ${selected}`)}}/>}
     {volumeSettingsOpen&&<VolumeSettingsModal value={volumeMA} onClose={()=>setVolumeSettingsOpen(false)} onApply={setVolumeMA}/>}
+    {chartSettingsOpen&&<ChartSettingsModal value={chartSettings} onClose={()=>setChartSettingsOpen(false)} onApply={setChartSettings}/>}
     {toast&&<div className="toast"><Check size={14}/>{toast}</div>}
   </div>;
 }
