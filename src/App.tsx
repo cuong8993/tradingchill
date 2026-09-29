@@ -29,11 +29,12 @@ export default function App(){
   const [volumeMA,setVolumeMA]=useState<VolumeMASettings>(()=>({...DEFAULT_VOLUME_MA,...stored('tc.volumeMA',DEFAULT_VOLUME_MA)}));
   const [logScale,setLogScale]=useState(()=>stored('tc.logScale',false));
   const [chartSettings,setChartSettings]=useState<ChartSettings>(()=>({...DEFAULT_CHART_SETTINGS,...stored('tc.chartSettings',DEFAULT_CHART_SETTINGS)}));
-  const [watchlistWidth,setWatchlistWidth]=useState<number|null>(()=>stored<number|null>('tc.watchlistWidth',null));
+  const [watchlistWidth,setWatchlistWidth]=useState<number|null>(()=>stored<number|null>('tc.watchlistWidth.v2',null));
   const [watchlistHidden,setWatchlistHidden]=useState(false);
   const [fitSignal,setFitSignal]=useState(0);
   const [volumeSettingsOpen,setVolumeSettingsOpen]=useState(false);
   const [chartSettingsOpen,setChartSettingsOpen]=useState(false);
+  const [chartFullscreen,setChartFullscreen]=useState(false);
   const [searchOpen,setSearchOpen]=useState(false),[searchText,setSearchText]=useState(''),[indicatorOpen,setIndicatorOpen]=useState(false);
   const [mobileWatch,setMobileWatch]=useState(false),[alertsOpen,setAlertsOpen]=useState(false),[alertModal,setAlertModal]=useState(false),[toast,setToast]=useState('');
 
@@ -41,6 +42,7 @@ export default function App(){
   const toastFn=useCallback((s:string)=>setToast(s),[]);
   const openVolumeSettings=useCallback(()=>setVolumeSettingsOpen(true),[]);
   const openChartSettings=useCallback(()=>setChartSettingsOpen(true),[]);
+  const toggleChartFullscreen=useCallback(()=>setChartFullscreen(v=>!v),[]);
   const alertState=useAlerts(market.config.database,selected,quote,market.quotes,toastFn);
   const selectedAlerts=useMemo(()=>alertState.alerts.filter(a=>a.symbol===selected&&a.active),[alertState.alerts,selected]);
 
@@ -52,11 +54,17 @@ export default function App(){
   useEffect(()=>localStorage.setItem('tc.chartSettings',JSON.stringify(chartSettings)),[chartSettings]);
   useEffect(()=>localStorage.setItem('tc.timeframeFavorites',JSON.stringify(timeframeFavorites)),[timeframeFavorites]);
   useEffect(()=>{
-    if(watchlistWidth==null)localStorage.removeItem('tc.watchlistWidth');
-    else localStorage.setItem('tc.watchlistWidth',JSON.stringify(Math.round(watchlistWidth)));
+    if(watchlistWidth==null)localStorage.removeItem('tc.watchlistWidth.v2');
+    else localStorage.setItem('tc.watchlistWidth.v2',JSON.stringify(Math.round(watchlistWidth)));
   },[watchlistWidth]);
   useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(id)},[toast]);
   useEffect(()=>{const id=setTimeout(()=>void market.search(searchText),220);return()=>clearTimeout(id)},[searchText,market.search]);
+  useEffect(()=>{
+    if(!chartFullscreen)return;
+    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')setChartFullscreen(false)};
+    window.addEventListener('keydown',onKey);
+    return()=>window.removeEventListener('keydown',onKey);
+  },[chartFullscreen]);
 
   const add=(s:string)=>{const clean=s.toUpperCase();setWatchlist(p=>p.includes(clean)?p:[...p,clean]);setSelected(clean);setSearchOpen(false);setSearchText('')};
   const remove=(s:string)=>setWatchlist(p=>{const n=p.filter(x=>x!==s);if(selected===s&&n[0])setSelected(n[0]);return n});
@@ -64,7 +72,7 @@ export default function App(){
   const selectFromDropdown=(s:string)=>{setSelected(s);setSearchOpen(false);setSearchText('')};
   const toggleTimeframeFavorite=(label:string)=>setTimeframeFavorites(current=>current.includes(label)?current.filter(x=>x!==label):[...current,label]);
   const shellStyle={
-    '--watchlist-width':watchlistHidden?'0px':watchlistWidth==null?'clamp(285px,24vw,420px)':`${Math.round(watchlistWidth)}px`,
+    '--watchlist-width':watchlistHidden?'0px':watchlistWidth==null?'clamp(280px,20vw,360px)':`${Math.round(watchlistWidth)}px`,
     '--green':chartSettings.upColor,
     '--red':chartSettings.downColor,
   } as CSSProperties;
@@ -97,7 +105,7 @@ export default function App(){
       onAdd={()=>setSearchOpen(true)}
       onHide={()=>setWatchlistHidden(true)}
       onPanelWidth={setWatchlistWidth}
-      onAutoFit={width=>setWatchlistWidth(width)}
+      onAutoFit={()=>setWatchlistWidth(null)}
     />
 
     <main className="workspace">
@@ -133,6 +141,8 @@ export default function App(){
         onToggleLog={()=>setLogScale(v=>!v)}
         onVolumeSettings={openVolumeSettings}
         onChartSettings={openChartSettings}
+        fullscreen={chartFullscreen}
+        onToggleFullscreen={toggleChartFullscreen}
         retry={()=>void market.loadCandles()}
       />
       <footer><span>{market.config.mode==='live'?'Live Finnhub quotes':'Live quote feed offline'}</span><span>{market.config.chartProvider==='twelvedata'?'Twelve Data charts':'Yahoo real-market charts'} · {watchlist.length} symbols</span></footer>
