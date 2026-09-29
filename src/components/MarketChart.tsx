@@ -275,48 +275,63 @@ export default function MarketChart({ candles, quote, candleSeconds, chartSettin
 
     fitAll();
 
-    const isCandleHit=(param:any)=>{
-      if(!param?.point)return false;
-      const data=param?.seriesData?.get?.(price);
-      if(!data||data.open==null||data.high==null||data.low==null||data.close==null)return false;
-
-      const candleX=chart.timeScale().timeToCoordinate(data.time);
-      const highY=price.priceToCoordinate(data.high);
-      const lowY=price.priceToCoordinate(data.low);
-      if(candleX==null||highY==null||lowY==null)return false;
-
-      const spacing=Number((chart.timeScale().options() as any).barSpacing)||6;
-      const halfWidth=Math.max(5,Math.min(12,spacing*.6));
-      const top=Math.min(highY,lowY)-5;
-      const bottom=Math.max(highY,lowY)+5;
-
-      return Math.abs(param.point.x-candleX)<=halfWidth&&param.point.y>=top&&param.point.y<=bottom;
+    const pointInPane=(paneIndex:number,y:number)=>{
+      let top=0;
+      for(const pane of chart.panes()){
+        const height=pane.getHeight();
+        if(pane.paneIndex()===paneIndex)return y>=top&&y<=top+height;
+        top+=height;
+      }
+      return false;
     };
 
-    const handleDoubleClick=(param:any)=>{
-      if(!param?.point)return;
+    const isCandleHit=(x:number,y:number)=>{
+      const firstPane=chart.panes()[0];
+      if(firstPane&&y>firstPane.getHeight())return false;
 
-      if(volumePaneIndex!=null){
-        if(typeof param?.paneIndex==='number'&&param.paneIndex===volumePaneIndex){
-          onVolumeSettings();
-          return;
-        }
+      const spacing=Number((chart.timeScale().options() as any).barSpacing)||6;
+      const halfWidth=Math.max(5,Math.min(14,spacing*.7));
+      let nearest:Candle|null=null;
+      let nearestX:number|null=null;
+      let nearestDistance=Infinity;
 
-        if(typeof param?.paneIndex!=='number'){
-          const panes=chart.panes();
-          let top=0;
-          for(const pane of panes){
-            const height=pane.getHeight();
-            if(pane.paneIndex()===volumePaneIndex&&param.point.y>=top&&param.point.y<=top+height){
-              onVolumeSettings();
-              return;
-            }
-            top+=height;
-          }
+      for(const candle of candles){
+        const candleX=chart.timeScale().timeToCoordinate(asTime(candle.time));
+        if(candleX==null)continue;
+        const distance=Math.abs(candleX-x);
+        if(distance<nearestDistance){
+          nearestDistance=distance;
+          nearest=candle;
+          nearestX=candleX;
         }
       }
 
-      if(isCandleHit(param)){
+      if(!nearest||nearestX==null||nearestDistance>halfWidth)return false;
+      const highY=price.priceToCoordinate(nearest.high);
+      const lowY=price.priceToCoordinate(nearest.low);
+      if(highY==null||lowY==null)return false;
+
+      const top=Math.min(highY,lowY)-6;
+      const bottom=Math.max(highY,lowY)+6;
+      return y>=top&&y<=bottom;
+    };
+
+    const pointerPoint=(event:MouseEvent)=>{
+      const rect=el.getBoundingClientRect();
+      return {x:event.clientX-rect.left,y:event.clientY-rect.top};
+    };
+
+    const handleDomDoubleClick=(event:MouseEvent)=>{
+      event.preventDefault();
+      event.stopPropagation();
+      const {x,y}=pointerPoint(event);
+
+      if(volumePaneIndex!=null&&pointInPane(volumePaneIndex,y)){
+        onVolumeSettings();
+        return;
+      }
+
+      if(isCandleHit(x,y)){
         onChartSettings();
         return;
       }
@@ -324,7 +339,14 @@ export default function MarketChart({ candles, quote, candleSeconds, chartSettin
       onFullscreen();
     };
 
-    chart.subscribeDblClick(handleDoubleClick);
+    const handleContextMenu=(event:MouseEvent)=>{
+      event.preventDefault();
+      event.stopPropagation();
+      onChartSettings();
+    };
+
+    el.addEventListener('dblclick',handleDomDoubleClick,true);
+    el.addEventListener('contextmenu',handleContextMenu,true);
 
     const resizeChart = () => {
       chart.applyOptions({ width: safeWidth(el), height: safeHeight(el) });
@@ -341,7 +363,8 @@ export default function MarketChart({ candles, quote, candleSeconds, chartSettin
     });
 
     return () => {
-      chart.unsubscribeDblClick(handleDoubleClick);
+      el.removeEventListener('dblclick',handleDomDoubleClick,true);
+      el.removeEventListener('contextmenu',handleContextMenu,true);
       observer.disconnect();
       window.removeEventListener('orientationchange', resizeChart);
       window.visualViewport?.removeEventListener('resize', resizeChart);
@@ -387,5 +410,5 @@ export default function MarketChart({ candles, quote, candleSeconds, chartSettin
     chart.priceScale('right').setAutoScale(true);
   },[fitSignal]);
 
-  return <div ref={host} className="chart-host" onContextMenu={e=>{e.preventDefault();onChartSettings()}} />;
+  return <div ref={host} className="chart-host" />;
 }
