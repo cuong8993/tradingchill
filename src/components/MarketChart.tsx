@@ -9,7 +9,7 @@ import {
   createChart,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import type { Candle, IndicatorSettings, PriceAlert, Quote, VolumeMASettings } from '../types';
+import type { Candle, ChartSettings, IndicatorSettings, PriceAlert, Quote, VolumeMASettings } from '../types';
 import { atr, bollinger, ema, macd, rsi, sma, stochastic, vwap } from '../lib/indicators';
 import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR } from '../config';
 
@@ -17,12 +17,15 @@ type Props = {
   candles: Candle[];
   quote?: Quote;
   candleSeconds: number;
+  chartSettings: ChartSettings;
   indicators: IndicatorSettings;
   alerts: PriceAlert[];
   volumeMA: VolumeMASettings;
   fitSignal: number;
   logScale: boolean;
   onVolumeSettings: () => void;
+  onChartSettings: () => void;
+  onFullscreen: () => void;
 };
 
 type Point={time:number;value:number};
@@ -35,6 +38,10 @@ const safeWidth = (el: HTMLElement) => {
 const safeHeight = (el: HTMLElement) => {
   const measured=Math.floor(el.clientHeight || el.getBoundingClientRect().height || 0);
   return measured>0?Math.max(120,measured):260;
+};
+const withAlpha=(color:string,alpha:string)=>{
+  const hex=color.trim();
+  return /^#[0-9a-f]{6}$/i.test(hex)?`${hex}${alpha}`:hex;
 };
 
 function volumeMovingAverage(candles:Candle[],settings:VolumeMASettings):Point[]{
@@ -95,7 +102,7 @@ function addQuoteLines(price:any,quote?:Quote){
   return lines;
 }
 
-export default function MarketChart({ candles, quote, candleSeconds, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings }: Props) {
+export default function MarketChart({ candles, quote, candleSeconds, chartSettings, indicators, alerts, volumeMA, fitSignal, logScale, onVolumeSettings, onChartSettings, onFullscreen }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const chartRef=useRef<ReturnType<typeof createChart>|null>(null);
   const priceRef=useRef<any>(null);
@@ -111,7 +118,7 @@ export default function MarketChart({ candles, quote, candleSeconds, indicators,
       width: safeWidth(el),
       height: safeHeight(el),
       layout: {
-        background: { type: ColorType.Solid, color: '#0c111b' },
+        background: { type: ColorType.Solid, color: chartSettings.backgroundColor },
         textColor: '#8f9bad',
         fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
         attributionLogo: false,
@@ -122,8 +129,8 @@ export default function MarketChart({ candles, quote, candleSeconds, indicators,
         },
       },
       grid: {
-        vertLines: { color: '#151c28' },
-        horzLines: { color: '#151c28' },
+        vertLines: { color: chartSettings.gridColor, visible: chartSettings.gridVisible },
+        horzLines: { color: chartSettings.gridColor, visible: chartSettings.gridVisible },
       },
       crosshair: {
         vertLine: { color: '#5d6b82', labelBackgroundColor: '#273247' },
@@ -138,12 +145,12 @@ export default function MarketChart({ candles, quote, candleSeconds, indicators,
     });
 
     const price = chart.addSeries(CandlestickSeries, {
-      upColor: CANDLE_UP_COLOR,
-      downColor: CANDLE_DOWN_COLOR,
-      borderUpColor: CANDLE_UP_COLOR,
-      borderDownColor: CANDLE_DOWN_COLOR,
-      wickUpColor: CANDLE_UP_COLOR,
-      wickDownColor: CANDLE_DOWN_COLOR,
+      upColor: chartSettings.upColor,
+      downColor: chartSettings.downColor,
+      borderUpColor: chartSettings.upColor,
+      borderDownColor: chartSettings.downColor,
+      wickUpColor: chartSettings.upColor,
+      wickDownColor: chartSettings.downColor,
       priceLineVisible: true,
       lastValueVisible: true,
     });
@@ -175,7 +182,7 @@ export default function MarketChart({ candles, quote, candleSeconds, indicators,
       volume.setData(candles.map(c => ({
         time: asTime(c.time),
         value: c.volume,
-        color: c.close >= c.open ? 'rgba(34,197,139,.5)' : 'rgba(244,91,105,.5)',
+        color: c.close >= c.open ? withAlpha(chartSettings.upColor,'80') : withAlpha(chartSettings.downColor,'80'),
       })));
 
       const volumeMAData=volumeMovingAverage(candles,volumeMA);
@@ -269,25 +276,53 @@ export default function MarketChart({ candles, quote, candleSeconds, indicators,
 
     fitAll();
 
+    const isCandleHit=(param:any)=>{
+      if(!param?.point)return false;
+      const data=param?.seriesData?.get?.(price);
+      if(!data||data.open==null||data.high==null||data.low==null||data.close==null)return false;
+
+      const candleX=chart.timeScale().timeToCoordinate(data.time);
+      const highY=price.priceToCoordinate(data.high);
+      const lowY=price.priceToCoordinate(data.low);
+      if(candleX==null||highY==null||lowY==null)return false;
+
+      const spacing=Number((chart.timeScale().options() as any).barSpacing)||6;
+      const halfWidth=Math.max(5,Math.min(12,spacing*.6));
+      const top=Math.min(highY,lowY)-5;
+      const bottom=Math.max(highY,lowY)+5;
+
+      return Math.abs(param.point.x-candleX)<=halfWidth&&param.point.y>=top&&param.point.y<=bottom;
+    };
+
     const handleDoubleClick=(param:any)=>{
-      if(volumePaneIndex==null)return;
-
-      if(typeof param?.paneIndex==='number'){
-        if(param.paneIndex===volumePaneIndex)onVolumeSettings();
-        return;
-      }
-
       if(!param?.point)return;
-      const panes=chart.panes();
-      let top=0;
-      for(const pane of panes){
-        const height=pane.getHeight();
-        if(pane.paneIndex()===volumePaneIndex&&param.point.y>=top&&param.point.y<=top+height){
+
+      if(volumePaneIndex!=null){
+        if(typeof param?.paneIndex==='number'&&param.paneIndex===volumePaneIndex){
           onVolumeSettings();
           return;
         }
-        top+=height;
+
+        if(typeof param?.paneIndex!=='number'){
+          const panes=chart.panes();
+          let top=0;
+          for(const pane of panes){
+            const height=pane.getHeight();
+            if(pane.paneIndex()===volumePaneIndex&&param.point.y>=top&&param.point.y<=top+height){
+              onVolumeSettings();
+              return;
+            }
+            top+=height;
+          }
+        }
       }
+
+      if(isCandleHit(param)){
+        onChartSettings();
+        return;
+      }
+
+      onFullscreen();
     };
 
     chart.subscribeDblClick(handleDoubleClick);
@@ -316,7 +351,7 @@ export default function MarketChart({ candles, quote, candleSeconds, indicators,
       quoteLinesRef.current=[];
       chart.remove();
     };
-  }, [candles, indicators, alerts, volumeMA, logScale, onVolumeSettings]);
+  }, [candles, chartSettings, indicators, alerts, volumeMA, logScale, onVolumeSettings, onChartSettings, onFullscreen]);
 
   useEffect(()=>{
     const price=priceRef.current;
@@ -353,5 +388,5 @@ export default function MarketChart({ candles, quote, candleSeconds, indicators,
     chart.priceScale('right').setAutoScale(true);
   },[fitSignal]);
 
-  return <div ref={host} className="chart-host" />;
+  return <div ref={host} className="chart-host" onContextMenu={e=>{e.preventDefault();onChartSettings()}} />;
 }
