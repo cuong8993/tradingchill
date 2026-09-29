@@ -10,7 +10,7 @@
   .brand{min-width:auto;gap:6px}
   .brand strong{font-size:14px}
   .brand i,.search-trigger span,.ohlc{display:none}
-  .brand-mark{width:28px;height:28px;flex-basis:28px}
+  .brand-mark{width:37px;height:37px;flex-basis:37px}
   .mobile-menu{display:block;color:var(--text);padding:0 4px}
   .watchlist{position:fixed;left:0;top:58px;bottom:0;width:min(330px,90vw);z-index:70;transform:translateX(-101%);transition:.2s;box-shadow:25px 0 60px #0009}
   .watchlist.open{transform:none}
@@ -56,7 +56,7 @@
 
 @media(max-width:480px){
   .brand strong{display:none}
-  .brand{min-width:28px}
+  .brand{min-width:37px}
   .search-trigger{height:32px;padding:0 8px}
   .topbar{gap:6px}
   .workspace{grid-template-rows:68px 43px minmax(0,1fr) 26px}
