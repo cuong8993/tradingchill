@@ -1,4 +1,4 @@
-import type { IndicatorSettings, Timeframe, VolumeMASettings } from './types';
+import type { ChartSettings, IndicatorSettings, Timeframe, VolumeMASettings } from './types';
 
 export const CANDLE_UP_COLOR = '#22c58b';
 export const CANDLE_DOWN_COLOR = '#f45b69';
@@ -62,6 +62,14 @@ export const DEFAULT_VOLUME_MA: VolumeMASettings = {
   type:'SMA',
   length:20,
   color:'#f6c85f',
+};
+
+export const DEFAULT_CHART_SETTINGS: ChartSettings = {
+  upColor:CANDLE_UP_COLOR,
+  downColor:CANDLE_DOWN_COLOR,
+  backgroundColor:'#0c111b',
+  gridVisible:true,
+  gridColor:'#151c28',
 };
 
 export const INDICATOR_OPTIONS: Array<[keyof IndicatorSettings,string,string]> = [
