@@ -15,7 +15,7 @@ export default function ChartSettingsModal({value,onClose,onApply}:Props){
 
   useEffect(()=>setDraft(value),[value]);
 
-  const set=<K extends keyof ChartSettings>(key:K,value:ChartSettings[K])=>{
+  const set=<K extends keyof ChartSettings,>(key:K,value:ChartSettings[K])=>{
     setDraft(current=>({...current,[key]:value}));
   };
 
