@@ -66,6 +66,14 @@ export type VolumeMASettings = {
   color: string;
 };
 
+export type ChartSettings = {
+  upColor: string;
+  downColor: string;
+  backgroundColor: string;
+  gridVisible: boolean;
+  gridColor: string;
+};
+
 export type AlertDirection = 'above' | 'below';
 
 export type PriceAlert = {
