@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" role="img" aria-label="TradingChill">
+  <rect width="10" height="10" fill="#081426"/>
+  <g transform="translate(0 10) scale(1 -1)" fill="#fff">
+    <polygon points="0,6.5 0,8 10,10 10,8.5 4.5,7.4 4.5,0.3 3,0 3,7.1"/>
+    <polygon points="6,0.6 6,6.2 10,7 10,5.5 7.5,5 7.5,2.4 10,2.9 10,1.4"/>
+  </g>
+</svg>
