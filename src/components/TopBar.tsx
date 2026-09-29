@@ -22,7 +22,7 @@ export default function TopBar(p:Props){
   const query=p.searchText.trim();
   return <header className="topbar">
     <button className="mobile-menu" onClick={p.onMenu}><Menu size={19}/></button>
-    <div className="brand"><span className="brand-mark"><img src="/TradingChill_Logo.svg" alt="TradingChill logo"/></span><strong>TradingChill</strong><i>BETA</i></div>
+    <div className="brand"><span className="brand-mark"><img src="/logo.png" alt="TradingChill logo"/></span><strong>TradingChill</strong><i>BETA</i></div>
 
     <div className="search-wrap">
       <button className="search-trigger" onClick={p.onSearchOpen} aria-expanded={p.searchOpen}>
