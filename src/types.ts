@@ -123,6 +123,7 @@ export type UserPreferences = {
   logScale?: boolean;
   chartSettings?: ChartSettings;
   watchlistWidth?: number | null;
+  theme?: 'dark' | 'light';
 };
 
 export type AuthResponse = {
