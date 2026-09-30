@@ -97,3 +97,26 @@ export type Timeframe = {
   available: boolean;
   note?: string;
 };
+
+
+export type AccountUser = {
+  id: number;
+  email: string;
+};
+
+export type UserPreferences = {
+  watchlist?: string[];
+  selected?: string;
+  timeframe?: string;
+  timeframeFavorites?: string[];
+  indicators?: IndicatorSettings;
+  volumeMA?: VolumeMASettings;
+  logScale?: boolean;
+  chartSettings?: ChartSettings;
+  watchlistWidth?: number | null;
+};
+
+export type AuthResponse = {
+  user: AccountUser | null;
+  preferences: UserPreferences | null;
+};
