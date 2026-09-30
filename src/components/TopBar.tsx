@@ -1,4 +1,4 @@
-import { Bell, BellRing, Check, ChevronDown, LoaderCircle, Menu, Plus, Search, UserRound } from 'lucide-react';
+import { Bell, BellRing, Check, ChevronDown, LoaderCircle, Menu, Moon, Plus, Search, Sun, UserRound } from 'lucide-react';
 import type { AccountUser, SearchResult } from '../types';
 
 type Props={
@@ -7,6 +7,7 @@ type Props={
   mode:'live'|'offline';
   hasAlerts:boolean;
   user:AccountUser|null;
+  theme:'dark'|'light';
   searchOpen:boolean;
   searchText:string;
   results:SearchResult[];
@@ -18,6 +19,7 @@ type Props={
   onAdd:(s:string)=>void;
   onAlerts:()=>void;
   onAccount:()=>void;
+  onTheme:()=>void;
 };
 
 export default function TopBar(p:Props){
@@ -61,6 +63,9 @@ export default function TopBar(p:Props){
     <div className="top-actions">
       <span className={`data-badge ${p.mode}`}>{p.mode==='live'?'LIVE':'OFFLINE'}</span>
       <button className="icon" onClick={p.onAlerts}>{p.hasAlerts?<BellRing size={17}/>:<Bell size={17}/>}</button>
+      <button className="icon theme-toggle" title={p.theme==='dark'?'Switch to light mode':'Switch to dark mode'} onClick={p.onTheme}>
+        {p.theme==='dark'?<Sun size={17}/>:<Moon size={17}/>}
+      </button>
       <button className={`icon account-button ${p.user?'signed-in':''}`} title={p.user?p.user.email:'Sign in or create account'} onClick={p.onAccount}>
         <UserRound size={17}/>
         {p.user&&<span className="account-dot"/>}
