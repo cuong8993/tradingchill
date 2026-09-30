@@ -4,7 +4,9 @@ import {
   QUOTE_BATCH_SIZE,
   SELECTED_ENRICHED_REFRESH_MS,
   SELECTED_QUOTE_REFRESH_MS,
-  WATCHLIST_REFRESH_MS,
+  WATCHLIST_ENRICH_REFRESH_MS,
+  WATCHLIST_FAST_REFRESH_MS,
+  stored,
 } from '../config';
 import type { Candle, CandleSource, InstrumentMeta, Quote, SearchResult, Timeframe } from '../types';
 
@@ -30,30 +32,55 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
   const [chartError,setChartError]=useState('');
   const [config,setConfig]=useState<{mode:'live'|'offline';chartProvider:'twelvedata'|'yahoo';database:boolean;accounts:boolean}>({mode:'offline',chartProvider:'yahoo',database:false,accounts:false});
   const [searchResults,setSearchResults]=useState<SearchResult[]>([]);
-  const [instruments,setInstruments]=useState<Record<string,InstrumentMeta>>({});
+  const [instruments,setInstruments]=useState<Record<string,InstrumentMeta>>(()=>stored<Record<string,InstrumentMeta>>('tc.instrumentMeta',{}));
   const [searchLoading,setSearchLoading]=useState(false);
 
   useEffect(()=>{ api.config().then(setConfig).catch(()=>{}); },[]);
 
-  const loadQuotes=useCallback(async()=>{
-    if(!watchlist.length)return;
+  const quoteBatches=useCallback(()=>{
     const batches:string[][]=[];
     for(let i=0;i<watchlist.length;i+=QUOTE_BATCH_SIZE)batches.push(watchlist.slice(i,i+QUOTE_BATCH_SIZE));
-    const result=(await Promise.allSettled(batches.map(api.quotes))).flatMap(r=>r.status==='fulfilled'?r.value:[]);
-    setQuotes(p=>({...p,...Object.fromEntries(result.map(q=>[q.symbol,q]))}));
+    return batches;
   },[watchlist]);
 
+  const loadFastQuotes=useCallback(async()=>{
+    if(!watchlist.length)return;
+    const result=(await Promise.allSettled(quoteBatches().map(api.quotesFast))).flatMap(r=>r.status==='fulfilled'?r.value:[]);
+    if(result.length)setQuotes(previous=>({...previous,...Object.fromEntries(result.map(q=>[q.symbol,q]))}));
+  },[watchlist,quoteBatches]);
+
+  const loadEnrichedQuotes=useCallback(async()=>{
+    if(!watchlist.length)return;
+    const result=(await Promise.allSettled(quoteBatches().map(api.quotes))).flatMap(r=>r.status==='fulfilled'?r.value:[]);
+    if(result.length)setQuotes(previous=>({...previous,...Object.fromEntries(result.map(q=>[q.symbol,q]))}));
+  },[watchlist,quoteBatches]);
+
   useEffect(()=>{
-    void loadQuotes();
-    const id=setInterval(()=>void loadQuotes(),WATCHLIST_REFRESH_MS);
-    return()=>clearInterval(id);
-  },[loadQuotes]);
+    void loadFastQuotes();
+    const fastId=setInterval(()=>void loadFastQuotes(),WATCHLIST_FAST_REFRESH_MS);
+    const firstEnrich=window.setTimeout(()=>void loadEnrichedQuotes(),1200);
+    const enrichId=setInterval(()=>void loadEnrichedQuotes(),WATCHLIST_ENRICH_REFRESH_MS);
+    return()=>{
+      clearInterval(fastId);
+      clearInterval(enrichId);
+      window.clearTimeout(firstEnrich);
+    };
+  },[loadFastQuotes,loadEnrichedQuotes]);
+
+  useEffect(()=>localStorage.setItem('tc.instrumentMeta',JSON.stringify(instruments)),[instruments]);
+
   useEffect(()=>{
-    if(!watchlist.length){setInstruments({});return;}
+    if(!watchlist.length)return;
+    const missing=watchlist.filter(symbol=>{
+      const item=instruments[symbol];
+      return !item||item.type==='Market';
+    });
+    if(!missing.length)return;
+
     let active=true;
-    void api.instruments(watchlist)
+    void api.instruments(missing)
       .then(items=>{
-        if(!active)return;
+        if(!active||!items.length)return;
         setInstruments(previous=>({
           ...previous,
           ...Object.fromEntries(items.map(item=>[item.symbol,item]))
@@ -61,8 +88,7 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
       })
       .catch(()=>{});
     return()=>{active=false};
-  },[watchlist]);
-
+  },[watchlist,instruments]);
 
   const loadSelectedQuote=useCallback(async()=>{
     try{
