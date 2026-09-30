@@ -7,6 +7,7 @@ import ChartToolbar from './components/ChartToolbar';
 import TopBar from './components/TopBar';
 import VolumeSettingsModal from './components/VolumeSettingsModal';
 import Watchlist from './components/Watchlist';
+import WatchlistSettingsModal from './components/WatchlistSettingsModal';
 import {
   DEFAULT_CHART_SETTINGS,
   DEFAULT_INDICATORS,
@@ -14,13 +15,14 @@ import {
   DEFAULT_TIMEFRAME_FAVORITES,
   DEFAULT_VOLUME_MA,
   DEFAULT_WATCHLIST,
+  DEFAULT_WATCHLIST_SETTINGS,
   TIMEFRAMES,
   stored,
 } from './config';
 import { useAlerts } from './hooks/useAlerts';
 import { api } from './lib/api';
 import { useMarket } from './hooks/useMarket';
-import type { AccountUser, ChartSettings, IndicatorSettings, Timeframe, UserPreferences, VolumeMASettings } from './types';
+import type { AccountUser, ChartSettings, IndicatorSettings, Timeframe, UserPreferences, VolumeMASettings, WatchlistSettings } from './types';
 import { ChartCard, MarketHeader } from './components/WorkspaceBits';
 
 export default function App(){
@@ -41,10 +43,12 @@ export default function App(){
     };
   });
   const [watchlistWidth,setWatchlistWidth]=useState<number|null>(()=>stored<number|null>('tc.watchlistWidth.v2',null));
+  const [watchlistSettings,setWatchlistSettings]=useState<WatchlistSettings>(()=>({...DEFAULT_WATCHLIST_SETTINGS,...stored('tc.watchlistSettings',DEFAULT_WATCHLIST_SETTINGS)}));
   const [watchlistHidden,setWatchlistHidden]=useState(false);
   const [fitSignal,setFitSignal]=useState(0);
   const [volumeSettingsOpen,setVolumeSettingsOpen]=useState(false);
   const [chartSettingsOpen,setChartSettingsOpen]=useState(false);
+  const [watchlistSettingsOpen,setWatchlistSettingsOpen]=useState(false);
   const [chartFullscreen,setChartFullscreen]=useState(false);
   const [accountUser,setAccountUser]=useState<AccountUser|null>(null);
   const [accountOpen,setAccountOpen]=useState(false);
@@ -72,7 +76,8 @@ export default function App(){
     chartSettings,
     watchlistWidth,
     theme,
-  }),[watchlist,selected,timeframe.label,timeframeFavorites,indicators,volumeMA,logScale,chartSettings,watchlistWidth,theme]);
+    watchlistSettings,
+  }),[watchlist,selected,timeframe.label,timeframeFavorites,indicators,volumeMA,logScale,chartSettings,watchlistWidth,theme,watchlistSettings]);
 
   const applyPreferences=useCallback((preferences:UserPreferences|null)=>{
     if(!preferences)return;
@@ -115,6 +120,7 @@ export default function App(){
       });
     }
     if(preferences.theme==='dark'||preferences.theme==='light')setTheme(preferences.theme);
+    if(preferences.watchlistSettings)setWatchlistSettings({...DEFAULT_WATCHLIST_SETTINGS,...preferences.watchlistSettings});
 
     if(preferences.watchlistWidth==null)setWatchlistWidth(null);
     else if(Number.isFinite(preferences.watchlistWidth))setWatchlistWidth(Math.max(250,Math.min(560,Number(preferences.watchlistWidth))));
@@ -179,6 +185,7 @@ export default function App(){
   useEffect(()=>localStorage.setItem('tc.theme',JSON.stringify(theme)),[theme]);
   useEffect(()=>localStorage.setItem('tc.chartSettings',JSON.stringify(chartSettings)),[chartSettings]);
   useEffect(()=>localStorage.setItem('tc.timeframeFavorites',JSON.stringify(timeframeFavorites)),[timeframeFavorites]);
+  useEffect(()=>localStorage.setItem('tc.watchlistSettings',JSON.stringify(watchlistSettings)),[watchlistSettings]);
   useEffect(()=>{
     if(watchlistWidth==null)localStorage.removeItem('tc.watchlistWidth.v2');
     else localStorage.setItem('tc.watchlistWidth.v2',JSON.stringify(Math.round(watchlistWidth)));
@@ -239,6 +246,7 @@ export default function App(){
       selected={selected}
       quotes={market.quotes}
       instruments={market.instruments}
+      settings={watchlistSettings}
       mobileOpen={mobileWatch}
       onSelect={select}
       onRemove={remove}
@@ -246,6 +254,7 @@ export default function App(){
       onHide={()=>setWatchlistHidden(true)}
       onPanelWidth={setWatchlistWidth}
       onAutoFit={()=>setWatchlistWidth(null)}
+      onSettings={()=>setWatchlistSettingsOpen(true)}
     />
 
     <main className="workspace">
@@ -301,6 +310,7 @@ export default function App(){
     {alertModal&&<AlertModal symbol={selected} price={quote?.price??0} onClose={()=>setAlertModal(false)} onCreate={async(d,t,n)=>{await alertState.create(d,t,n);toastFn(`Alert created for ${selected}`)}}/>}
     {volumeSettingsOpen&&<VolumeSettingsModal value={volumeMA} onClose={()=>setVolumeSettingsOpen(false)} onApply={setVolumeMA}/>}
     {chartSettingsOpen&&<ChartSettingsModal value={chartSettings} onClose={()=>setChartSettingsOpen(false)} onApply={setChartSettings}/>}
+    {watchlistSettingsOpen&&<WatchlistSettingsModal value={watchlistSettings} onClose={()=>setWatchlistSettingsOpen(false)} onApply={setWatchlistSettings}/>}
     {toast&&<div className="toast"><Check size={14}/>{toast}</div>}
   </div>;
 }
