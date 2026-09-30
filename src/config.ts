@@ -1,4 +1,4 @@
-import type { ChartSettings, IndicatorSettings, Timeframe, VolumeMASettings } from './types';
+import type { ChartSettings, IndicatorSettings, Timeframe, VolumeMASettings, WatchlistSettings } from './types';
 
 export const CANDLE_UP_COLOR = '#22ab94';
 export const CANDLE_DOWN_COLOR = '#f23645';
@@ -63,6 +63,14 @@ export const DEFAULT_VOLUME_MA: VolumeMASettings = {
   type:'SMA',
   length:20,
   color:'#f6c85f',
+};
+
+export const DEFAULT_WATCHLIST_SETTINGS: WatchlistSettings = {
+  upColor:'#00ff00',
+  downColor:'#f23645',
+  rowHeight:35,
+  logoSize:25,
+  fontSize:12,
 };
 
 export const DEFAULT_CHART_SETTINGS: ChartSettings = {
