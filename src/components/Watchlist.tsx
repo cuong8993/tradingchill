@@ -36,6 +36,11 @@ function extendedPercent(q?:Quote){
   return ((q.extendedPrice-reference)/reference)*100;
 }
 
+function watchPct(value:number|null|undefined){
+  if(value==null||!Number.isFinite(value))return '-';
+  return `${value.toFixed(2)}%`;
+}
+
 function validColumns(value:unknown):number[]{
   if(!Array.isArray(value)||value.length!==4||value.some(v=>!Number.isFinite(Number(v))))return AUTO_COLUMNS;
   const numbers=value.map(Number);
@@ -174,8 +179,8 @@ export default function Watchlist(p:Props){
             <strong title={instrument?.name||s}>{instrument?.displaySymbol||s}</strong>
           </span>
           <span className={`numeric ${lastClass}`}>{money(q?.price)}</span>
-          <span className={`numeric ${changeClass}`}>{pct(q?.changePercent)}</span>
-          <span className={`numeric ext-price ${extClass}`} title={extTitle}>{pct(ext)}</span>
+          <span className={`numeric ${changeClass}`}>{watchPct(q?.changePercent)}</span>
+          <span className={`numeric ext-price ${extClass}`} title={extTitle}>{watchPct(ext)}</span>
           <i className="remove-symbol" onClick={e=>{e.stopPropagation();p.onRemove(s)}}><Trash2 size={13}/></i>
         </button>;
       })}
