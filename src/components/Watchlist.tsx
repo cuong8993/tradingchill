@@ -1,7 +1,8 @@
 import { Activity, Columns3, PanelLeftClose, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { money, pct, QUOTE_BATCH_SIZE, stored } from '../config';
-import type { Quote } from '../types';
+import InstrumentIcon from './InstrumentIcon';
+import type { InstrumentMeta, Quote } from '../types';
 
 type SortKey='symbol'|'price'|'changePercent'|'extendedPercent';
 type SortDirection='asc'|'desc';
@@ -10,6 +11,7 @@ type Props={
   symbols:string[];
   selected:string;
   quotes:Record<string,Quote>;
+  instruments:Record<string,InstrumentMeta>;
   mobileOpen:boolean;
   onSelect:(s:string)=>void;
   onRemove:(s:string)=>void;
@@ -159,6 +161,7 @@ export default function Watchlist(p:Props){
     <div className="watch-items">
       {sortedSymbols.map(s=>{
         const q=p.quotes[s];
+        const instrument=p.instruments[s];
         const ext=extendedPercent(q);
         const extTitle=q?.extendedSession?`${q.extendedSession.toUpperCase()} market: ${money(q.extendedPrice)}`:undefined;
         const lastClass=directionClass(q?.price,q?.previousClose);
@@ -166,7 +169,10 @@ export default function Watchlist(p:Props){
         const changeClass=(q?.changePercent??0)>=0?'up':'down';
 
         return <button className={`watch-row ${p.selected===s?'active':''}`} style={{gridTemplateColumns:gridTemplate}} key={s} onClick={()=>p.onSelect(s)}>
-          <span className="ticker"><b>{s.slice(0,1)}</b><strong>{s}</strong></span>
+          <span className="ticker">
+            <InstrumentIcon symbol={s} instrument={instrument} className="watch-symbol-logo"/>
+            <strong title={instrument?.name||s}>{instrument?.displaySymbol||s}</strong>
+          </span>
           <span className={`numeric ${lastClass}`}>{money(q?.price)}</span>
           <span className={`numeric ${changeClass}`}>{pct(q?.changePercent)}</span>
           <span className={`numeric ext-price ${extClass}`} title={extTitle}>{pct(ext)}</span>
