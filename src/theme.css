@@ -32,10 +32,10 @@
 }
 
 .app-shell[data-theme='dark'] .watchlist{background:#000}
-.app-shell[data-theme='dark'] .watch-row{border-bottom-color:#11151d}
-.app-shell[data-theme='dark'] .watch-row:hover,
-.app-shell[data-theme='dark'] .watch-row.active{background:#0e151f}
-.app-shell[data-theme='dark'] .remove-symbol{background:#0e151f}
+.app-shell[data-theme='dark'] .watch-row{border-bottom-color:#262626}
+.app-shell[data-theme='dark'] .watch-row:hover{background:#0c0f13}
+.app-shell[data-theme='dark'] .watch-row.active{background:#11151b}
+.app-shell[data-theme='dark'] .remove-symbol{background:#11151b}
 .app-shell[data-theme='dark'] .add-symbol,
 .app-shell[data-theme='dark'] .watch-foot{background:#05070a}
 
