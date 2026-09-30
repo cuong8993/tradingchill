@@ -1,8 +1,8 @@
-import { Activity, Columns3, PanelLeftClose, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { Activity, Columns3, PanelLeftClose, Plus, Settings2, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { money, QUOTE_BATCH_SIZE, stored } from '../config';
 import InstrumentIcon from './InstrumentIcon';
-import type { InstrumentMeta, Quote } from '../types';
+import type { InstrumentMeta, Quote, WatchlistSettings } from '../types';
 
 type SortKey='symbol'|'price'|'changePercent'|'extendedPercent';
 type SortDirection='asc'|'desc';
@@ -12,6 +12,7 @@ type Props={
   selected:string;
   quotes:Record<string,Quote>;
   instruments:Record<string,InstrumentMeta>;
+  settings:WatchlistSettings;
   mobileOpen:boolean;
   onSelect:(s:string)=>void;
   onRemove:(s:string)=>void;
@@ -19,6 +20,7 @@ type Props={
   onHide:()=>void;
   onPanelWidth:(width:number)=>void;
   onAutoFit:()=>void;
+  onSettings:()=>void;
 };
 
 const AUTO_COLUMNS=[42,19,19,20];
@@ -141,10 +143,19 @@ export default function Watchlist(p:Props){
     {index<3&&<span className="column-resizer" role="separator" aria-label={`Resize ${label} column`} onPointerDown={e=>startColumnResize(index,e)}/>}
   </button>;
 
-  return <aside ref={asideRef} className={`watchlist ${p.mobileOpen?'open':''}`}>
+  const appearanceStyle={
+    '--watch-up':p.settings.upColor,
+    '--watch-down':p.settings.downColor,
+    '--watch-row-height':`${p.settings.rowHeight}px`,
+    '--watch-logo-size':`${p.settings.logoSize}px`,
+    '--watch-font-size':`${p.settings.fontSize}px`,
+  } as CSSProperties;
+
+  return <aside ref={asideRef} className={`watchlist ${p.mobileOpen?'open':''}`} style={appearanceStyle}>
     <div className="watch-head">
       <span>WATCHLIST</span><strong>{p.symbols.length} symbols</strong>
       <div className="watch-actions">
+        <button title="Watchlist appearance settings" onClick={p.onSettings}><Settings2 size={14}/></button>
         <button title="Auto fit watchlist and columns" onClick={autoFit}><Columns3 size={14}/></button>
         <button className="desktop-watch-action" title="Hide watchlist for full-width chart" onClick={p.onHide}><PanelLeftClose size={14}/></button>
         <button title="Add symbol" onClick={p.onAdd}><Plus size={15}/></button>
