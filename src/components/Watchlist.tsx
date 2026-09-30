@@ -24,11 +24,6 @@ type Props={
 const AUTO_COLUMNS=[42,19,19,20];
 const MIN_COLUMNS=[24,14,14,14];
 
-function directionClass(value:number|null|undefined,reference:number|null|undefined){
-  if(value==null||reference==null||!Number.isFinite(value)||!Number.isFinite(reference))return '';
-  return value>=reference?'up':'down';
-}
-
 function extendedPercent(q?:Quote){
   if(!q||q.extendedPrice==null)return null;
   const reference=q.regularClose??q.price;
@@ -169,7 +164,6 @@ export default function Watchlist(p:Props){
         const instrument=p.instruments[s];
         const ext=extendedPercent(q);
         const extTitle=q?.extendedSession?`${q.extendedSession.toUpperCase()} market: ${money(q.extendedPrice)}`:undefined;
-        const lastClass=directionClass(q?.price,q?.previousClose);
         const extClass=ext==null?'':ext>=0?'up':'down';
         const changeClass=(q?.changePercent??0)>=0?'up':'down';
 
@@ -178,7 +172,7 @@ export default function Watchlist(p:Props){
             <InstrumentIcon symbol={s} instrument={instrument} className="watch-symbol-logo"/>
             <strong title={instrument?.name||s}>{instrument?.displaySymbol||s}</strong>
           </span>
-          <span className={`numeric ${lastClass}`}>{money(q?.price)}</span>
+          <span className="numeric last-price">{money(q?.price)}</span>
           <span className={`numeric ${changeClass}`}>{watchPct(q?.changePercent)}</span>
           <span className={`numeric ext-price ${extClass}`} title={extTitle}>{watchPct(ext)}</span>
           <i className="remove-symbol" onClick={e=>{e.stopPropagation();p.onRemove(s)}}><Trash2 size={13}/></i>
