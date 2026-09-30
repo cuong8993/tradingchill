@@ -1,11 +1,12 @@
-import { Bell, BellRing, Check, ChevronDown, LoaderCircle, Menu, Plus, Search } from 'lucide-react';
-import type { SearchResult } from '../types';
+import { Bell, BellRing, Check, ChevronDown, LoaderCircle, Menu, Plus, Search, UserRound } from 'lucide-react';
+import type { AccountUser, SearchResult } from '../types';
 
 type Props={
   selected:string;
   watchlist:string[];
   mode:'live'|'offline';
   hasAlerts:boolean;
+  user:AccountUser|null;
   searchOpen:boolean;
   searchText:string;
   results:SearchResult[];
@@ -16,6 +17,7 @@ type Props={
   onSelect:(s:string)=>void;
   onAdd:(s:string)=>void;
   onAlerts:()=>void;
+  onAccount:()=>void;
 };
 
 export default function TopBar(p:Props){
@@ -56,6 +58,13 @@ export default function TopBar(p:Props){
       </div>}
     </div>
 
-    <div className="top-actions"><span className={`data-badge ${p.mode}`}>{p.mode==='live'?'LIVE':'OFFLINE'}</span><button className="icon" onClick={p.onAlerts}>{p.hasAlerts?<BellRing size={17}/>:<Bell size={17}/>}</button></div>
+    <div className="top-actions">
+      <span className={`data-badge ${p.mode}`}>{p.mode==='live'?'LIVE':'OFFLINE'}</span>
+      <button className="icon" onClick={p.onAlerts}>{p.hasAlerts?<BellRing size={17}/>:<Bell size={17}/>}</button>
+      <button className={`icon account-button ${p.user?'signed-in':''}`} title={p.user?p.user.email:'Sign in or create account'} onClick={p.onAccount}>
+        <UserRound size={17}/>
+        {p.user&&<span className="account-dot"/>}
+      </button>
+    </div>
   </header>;
 }
