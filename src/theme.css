@@ -1,0 +1,152 @@
+.app-shell{
+  color:var(--text);
+  --surface:#0a0e16;
+  --surface-2:#101722;
+  --control:#101620;
+  --hover:#182131;
+  --soft:#202b3c;
+  --toolbar-bg:#0b1018;
+  --input-bg:#0b1018;
+  --line-soft:#111925;
+  --watch-bg:#000000;
+  --shadow:0 24px 70px #0008;
+}
+
+.app-shell[data-theme='dark']{
+  --bg:#080b11;
+  --panel:#0c111b;
+  --panel2:#101722;
+  --line:#1d2735;
+  --text:#e7edf7;
+  --muted:#7f8b9e;
+  --surface:#0a0e16;
+  --surface-2:#101722;
+  --control:#101620;
+  --hover:#182131;
+  --soft:#202b3c;
+  --toolbar-bg:#0b1018;
+  --input-bg:#0b1018;
+  --line-soft:#111925;
+  --watch-bg:#000000;
+  background:radial-gradient(circle at 70% -20%,#17204a55,transparent 35%),var(--bg);
+}
+
+.app-shell[data-theme='dark'] .watchlist{background:#000}
+.app-shell[data-theme='dark'] .watch-row{border-bottom-color:#11151d}
+.app-shell[data-theme='dark'] .watch-row:hover,
+.app-shell[data-theme='dark'] .watch-row.active{background:#0e151f}
+.app-shell[data-theme='dark'] .remove-symbol{background:#0e151f}
+.app-shell[data-theme='dark'] .add-symbol,
+.app-shell[data-theme='dark'] .watch-foot{background:#05070a}
+
+.app-shell[data-theme='light']{
+  --bg:#eef2f7;
+  --panel:#ffffff;
+  --panel2:#ffffff;
+  --line:#d7dee8;
+  --text:#172033;
+  --muted:#6c788c;
+  --surface:#ffffff;
+  --surface-2:#f7f9fc;
+  --control:#ffffff;
+  --hover:#eef3f8;
+  --soft:#e8edf4;
+  --toolbar-bg:#fafbfd;
+  --input-bg:#ffffff;
+  --line-soft:#e8edf3;
+  --watch-bg:#ffffff;
+  background:#eef2f7;
+}
+
+.app-shell[data-theme='light'] .topbar,
+.app-shell[data-theme='light'] .watchlist,
+.app-shell[data-theme='light'] .toolbar,
+.app-shell[data-theme='light'] .alerts,
+.app-shell[data-theme='light'] .float,
+.app-shell[data-theme='light'] .modal{
+  background:var(--surface);
+  color:var(--text);
+}
+
+.app-shell[data-theme='light'] .watchlist{background:var(--watch-bg)}
+.app-shell[data-theme='light'] .watch-row{border-bottom-color:var(--line-soft);color:var(--text)}
+.app-shell[data-theme='light'] .watch-row:hover,
+.app-shell[data-theme='light'] .watch-row.active,
+.app-shell[data-theme='light'] .ticker-dropdown>button:hover,
+.app-shell[data-theme='light'] .ticker-dropdown>button.selected,
+.app-shell[data-theme='light'] .search-results button:hover,
+.app-shell[data-theme='light'] .timeframe-option:hover,
+.app-shell[data-theme='light'] .indicator-list>button:hover{
+  background:var(--hover);
+}
+
+.app-shell[data-theme='light'] .search-trigger,
+.app-shell[data-theme='light'] .tool,
+.app-shell[data-theme='light'] .icon,
+.app-shell[data-theme='light'] .timeframes button,
+.app-shell[data-theme='light'] .watch-head button,
+.app-shell[data-theme='light'] .timeframe-trigger,
+.app-shell[data-theme='light'] .new-alert,
+.app-shell[data-theme='light'] .modal-actions button,
+.app-shell[data-theme='light'] .account-actions button{
+  background:var(--control);
+  color:var(--text);
+}
+
+.app-shell[data-theme='light'] .brand i,
+.app-shell[data-theme='light'] .watch-symbol-logo,
+.app-shell[data-theme='light'] .ticker-dropdown-symbol b,
+.app-shell[data-theme='light'] .instrument-avatar,
+.app-shell[data-theme='light'] .account-avatar{
+  background:var(--soft);
+  color:#243149;
+}
+
+.app-shell[data-theme='light'] .watch-symbol-logo b{color:#243149}
+.app-shell[data-theme='light'] .add-symbol,
+.app-shell[data-theme='light'] .watch-foot,
+.app-shell[data-theme='light'] .remove-symbol{
+  background:#f7f9fc;
+}
+
+.app-shell[data-theme='light'] .watch-columns>button.sorted,
+.app-shell[data-theme='light'] .ohlc b,
+.app-shell[data-theme='light'] .favorite-timeframes button{
+  color:#48566d;
+}
+
+.app-shell[data-theme='light'] .favorite-timeframes button:hover{background:#edf2f7}
+.app-shell[data-theme='light'] .favorite-timeframes button.active,
+.app-shell[data-theme='light'] .tool.active,
+.app-shell[data-theme='light'] .account-tabs button.active,
+.app-shell[data-theme='light'] .segments button.active,
+.app-shell[data-theme='light'] .chart-grid-toggle.on{
+  background:#e8edff;
+  color:#24325c;
+}
+
+.app-shell[data-theme='light'] .timeframe-trigger,
+.app-shell[data-theme='light'] .modal input,
+.app-shell[data-theme='light'] .chart-grid-toggle,
+.app-shell[data-theme='light'] .account-tabs button,
+.app-shell[data-theme='light'] .account-card,
+.app-shell[data-theme='light'] .segments button{
+  background:var(--input-bg);
+  color:var(--text);
+}
+
+.app-shell[data-theme='light'] .scale-corner-controls,
+.app-shell[data-theme='light'] .restore-watchlist{
+  background:#ffffffeb;
+  border-color:#ccd5e2;
+  color:#536078;
+}
+
+.app-shell[data-theme='light'] .scale-corner-controls button{color:#627088}
+.app-shell[data-theme='light'] .scale-corner-controls button:hover{background:#eef2f7;color:#172033}
+.app-shell[data-theme='light'] .chart-state button{background:#ffffff;color:var(--text)}
+.app-shell[data-theme='light'] .modal-bg{background:#24304466}
+.app-shell[data-theme='light'] .account-dot{box-shadow:0 0 0 2px #fff}
+.app-shell[data-theme='light'] .float,
+.app-shell[data-theme='light'] .modal{box-shadow:0 24px 70px #31415a26}
+.app-shell[data-theme='light'] footer{color:#6d788b}
