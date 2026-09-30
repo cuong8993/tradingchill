@@ -83,6 +83,14 @@ export type ChartSettings = {
   gridColor: string;
 };
 
+export type WatchlistSettings = {
+  upColor: string;
+  downColor: string;
+  rowHeight: number;
+  logoSize: number;
+  fontSize: number;
+};
+
 export type AlertDirection = 'above' | 'below';
 
 export type PriceAlert = {
@@ -124,6 +132,7 @@ export type UserPreferences = {
   chartSettings?: ChartSettings;
   watchlistWidth?: number | null;
   theme?: 'dark' | 'light';
+  watchlistSettings?: WatchlistSettings;
 };
 
 export type AuthResponse = {
