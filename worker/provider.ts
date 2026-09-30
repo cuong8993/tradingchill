@@ -591,7 +591,8 @@ export async function getInstrumentMeta(env:Env,symbol:string):Promise<Instrumen
 
   const cacheKey=new Request(`https://tradingchill.local/instrument/${encodeURIComponent(key)}`);
   try{
-    const cached=await caches.default.match(cacheKey);
+    const edgeCache=(caches as CacheStorage&{default:Cache}).default;
+    const cached=await edgeCache.match(cacheKey);
     if(cached)return cached.json() as Promise<InstrumentMeta>;
   }catch{}
 
@@ -623,7 +624,8 @@ export async function getInstrumentMeta(env:Env,symbol:string):Promise<Instrumen
   }
 
   try{
-    await caches.default.put(cacheKey,new Response(JSON.stringify(value),{
+    const edgeCache=(caches as CacheStorage&{default:Cache}).default;
+    await edgeCache.put(cacheKey,new Response(JSON.stringify(value),{
       headers:{
         'content-type':'application/json',
         'cache-control':'public, max-age=86400',
