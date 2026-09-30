@@ -1,6 +1,7 @@
 import { Check, PanelLeftOpen } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { AlertDrawer, AlertModal } from './components/AlertUI';
+import AccountModal from './components/AccountModal';
 import ChartSettingsModal from './components/ChartSettingsModal';
 import ChartToolbar from './components/ChartToolbar';
 import TopBar from './components/TopBar';
@@ -13,11 +14,13 @@ import {
   DEFAULT_TIMEFRAME_FAVORITES,
   DEFAULT_VOLUME_MA,
   DEFAULT_WATCHLIST,
+  TIMEFRAMES,
   stored,
 } from './config';
 import { useAlerts } from './hooks/useAlerts';
+import { api } from './lib/api';
 import { useMarket } from './hooks/useMarket';
-import type { ChartSettings, IndicatorSettings, Timeframe, VolumeMASettings } from './types';
+import type { AccountUser, ChartSettings, IndicatorSettings, Timeframe, UserPreferences, VolumeMASettings } from './types';
 import { ChartCard, MarketHeader } from './components/WorkspaceBits';
 
 export default function App(){
@@ -35,6 +38,10 @@ export default function App(){
   const [volumeSettingsOpen,setVolumeSettingsOpen]=useState(false);
   const [chartSettingsOpen,setChartSettingsOpen]=useState(false);
   const [chartFullscreen,setChartFullscreen]=useState(false);
+  const [accountUser,setAccountUser]=useState<AccountUser|null>(null);
+  const [accountOpen,setAccountOpen]=useState(false);
+  const [accountReady,setAccountReady]=useState(false);
+  const [syncStatus,setSyncStatus]=useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [searchOpen,setSearchOpen]=useState(false),[searchText,setSearchText]=useState(''),[indicatorOpen,setIndicatorOpen]=useState(false);
   const [mobileWatch,setMobileWatch]=useState(false),[alertsOpen,setAlertsOpen]=useState(false),[alertModal,setAlertModal]=useState(false),[toast,setToast]=useState('');
 
@@ -45,6 +52,107 @@ export default function App(){
   const toggleChartFullscreen=useCallback(()=>setChartFullscreen(v=>!v),[]);
   const alertState=useAlerts(market.config.database,selected,quote,market.quotes,toastFn);
   const selectedAlerts=useMemo(()=>alertState.alerts.filter(a=>a.symbol===selected&&a.active),[alertState.alerts,selected]);
+
+  const cloudPreferences=useMemo<UserPreferences>(()=>({
+    watchlist,
+    selected,
+    timeframe:timeframe.label,
+    timeframeFavorites,
+    indicators,
+    volumeMA,
+    logScale,
+    chartSettings,
+    watchlistWidth,
+  }),[watchlist,selected,timeframe.label,timeframeFavorites,indicators,volumeMA,logScale,chartSettings,watchlistWidth]);
+
+  const applyPreferences=useCallback((preferences:UserPreferences|null)=>{
+    if(!preferences)return;
+
+    let nextWatchlist:string[]|null=null;
+    if(Array.isArray(preferences.watchlist)){
+      nextWatchlist=preferences.watchlist
+        .map(symbol=>String(symbol).trim().toUpperCase())
+        .filter(symbol=>/^[A-Z0-9.:-]{1,24}$/.test(symbol))
+        .slice(0,200);
+      if(nextWatchlist.length)setWatchlist(nextWatchlist);
+    }
+
+    if(typeof preferences.selected==='string'){
+      const nextSelected=preferences.selected.trim().toUpperCase();
+      if(/^[A-Z0-9.:-]{1,24}$/.test(nextSelected))setSelected(nextSelected);
+    }else if(nextWatchlist?.[0]){
+      setSelected(nextWatchlist[0]);
+    }
+
+    if(typeof preferences.timeframe==='string'){
+      const savedTimeframe=TIMEFRAMES.find(item=>item.label===preferences.timeframe);
+      if(savedTimeframe)setTimeframe(savedTimeframe);
+    }
+
+    if(Array.isArray(preferences.timeframeFavorites)){
+      const allowed=new Set(TIMEFRAMES.map(item=>item.label));
+      setTimeframeFavorites(preferences.timeframeFavorites.filter(label=>allowed.has(label)).slice(0,12));
+    }
+
+    if(preferences.indicators)setIndicators({...DEFAULT_INDICATORS,...preferences.indicators});
+    if(preferences.volumeMA)setVolumeMA({...DEFAULT_VOLUME_MA,...preferences.volumeMA});
+    if(typeof preferences.logScale==='boolean')setLogScale(preferences.logScale);
+    if(preferences.chartSettings)setChartSettings({...DEFAULT_CHART_SETTINGS,...preferences.chartSettings});
+
+    if(preferences.watchlistWidth==null)setWatchlistWidth(null);
+    else if(Number.isFinite(preferences.watchlistWidth))setWatchlistWidth(Math.max(250,Math.min(560,Number(preferences.watchlistWidth))));
+  },[]);
+
+  const signIn=useCallback(async(email:string,password:string)=>{
+    const result=await api.login(email,password);
+    setAccountUser(result.user);
+    if(result.preferences)applyPreferences(result.preferences);
+    else if(result.user)await api.savePreferences(cloudPreferences);
+    setSyncStatus('saved');
+    setAccountReady(true);
+  },[applyPreferences,cloudPreferences]);
+
+  const register=useCallback(async(email:string,password:string)=>{
+    const result=await api.register(email,password);
+    setAccountUser(result.user);
+    if(result.user)await api.savePreferences(cloudPreferences);
+    setSyncStatus('saved');
+    setAccountReady(true);
+  },[cloudPreferences]);
+
+  const signOut=useCallback(async()=>{
+    await api.logout();
+    setAccountUser(null);
+    setSyncStatus('idle');
+  },[]);
+
+  useEffect(()=>{
+    let active=true;
+    void api.me()
+      .then(result=>{
+        if(!active)return;
+        setAccountUser(result.user);
+        if(result.user&&result.preferences)applyPreferences(result.preferences);
+      })
+      .catch(()=>{})
+      .finally(()=>{if(active)setAccountReady(true)});
+    return()=>{active=false};
+  },[applyPreferences]);
+
+  useEffect(()=>{
+    if(!accountReady||!accountUser)return;
+    setSyncStatus('saving');
+    let active=true;
+    const id=window.setTimeout(()=>{
+      void api.savePreferences(cloudPreferences)
+        .then(()=>{if(active)setSyncStatus('saved')})
+        .catch(()=>{if(active)setSyncStatus('error')});
+    },900);
+    return()=>{
+      active=false;
+      window.clearTimeout(id);
+    };
+  },[accountReady,accountUser,cloudPreferences]);
 
   useEffect(()=>localStorage.setItem('mv.watchlist',JSON.stringify(watchlist)),[watchlist]);
   useEffect(()=>localStorage.setItem('mv.selected',JSON.stringify(selected)),[selected]);
@@ -83,6 +191,7 @@ export default function App(){
       watchlist={watchlist}
       mode={market.config.mode}
       hasAlerts={alertState.alerts.some(a=>a.active)}
+      user={accountUser}
       searchOpen={searchOpen}
       searchText={searchText}
       results={market.searchResults}
@@ -93,6 +202,7 @@ export default function App(){
       onSelect={selectFromDropdown}
       onAdd={add}
       onAlerts={()=>setAlertsOpen(v=>!v)}
+      onAccount={()=>setAccountOpen(true)}
     />
 
     <Watchlist
@@ -148,6 +258,15 @@ export default function App(){
       <footer><span>{market.config.mode==='live'?'Live Finnhub quotes':'Live quote feed offline'}</span><span>{market.config.chartProvider==='twelvedata'?'Twelve Data charts':'Yahoo real-market charts'} · {watchlist.length} symbols</span></footer>
     </main>
 
+    {accountOpen&&<AccountModal
+      user={accountUser}
+      accountsAvailable={market.config.accounts}
+      syncStatus={syncStatus}
+      onClose={()=>setAccountOpen(false)}
+      onLogin={signIn}
+      onRegister={register}
+      onLogout={signOut}
+    />}
     {alertsOpen&&<AlertDrawer alerts={alertState.alerts} onClose={()=>setAlertsOpen(false)} onNew={()=>setAlertModal(true)} onDelete={a=>void alertState.remove(a)}/>}
     {alertModal&&<AlertModal symbol={selected} price={quote?.price??0} onClose={()=>setAlertModal(false)} onCreate={async(d,t,n)=>{await alertState.create(d,t,n);toastFn(`Alert created for ${selected}`)}}/>}
     {volumeSettingsOpen&&<VolumeSettingsModal value={volumeMA} onClose={()=>setVolumeSettingsOpen(false)} onApply={setVolumeMA}/>}
