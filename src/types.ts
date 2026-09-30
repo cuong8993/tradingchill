@@ -35,6 +35,15 @@ export type CandleResponse = {
   note?: string;
 };
 
+export type InstrumentMeta = {
+  symbol: string;
+  displaySymbol: string;
+  name: string;
+  logo: string | null;
+  mark: string | null;
+  type: string;
+};
+
 export type SearchResult = {
   symbol: string;
   description: string;
