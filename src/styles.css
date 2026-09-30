@@ -6,5 +6,6 @@
 @import './overlays.css';
 @import './volume-settings.css';
 @import './chart-settings.css';
+@import './theme.css';
 @import './account.css';
 @import './responsive.css';
