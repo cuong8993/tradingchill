@@ -16,6 +16,7 @@ export const api = {
   search: (q: string) => json<SearchResult[]>(`/api/search?q=${encodeURIComponent(q)}`),
   quote: (symbol: string) => json<Quote>(`/api/quote?symbol=${encodeURIComponent(symbol)}`),
   fastQuote: (symbol: string) => json<Quote>(`/api/quote-fast?symbol=${encodeURIComponent(symbol)}`),
+  quotesFast: (symbols: string[]) => json<Quote[]>(`/api/quotes-fast?symbols=${encodeURIComponent(symbols.join(','))}`),
   quotes: (symbols: string[]) => json<Quote[]>(`/api/quotes?symbols=${encodeURIComponent(symbols.join(','))}`),
   instruments: (symbols:string[]) => json<InstrumentMeta[]>(`/api/instruments?symbols=${encodeURIComponent(symbols.join(','))}`),
   candles: (symbol: string, resolution: string, from: number, to: number) =>
