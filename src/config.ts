@@ -1,7 +1,7 @@
 import type { ChartSettings, IndicatorSettings, Timeframe, VolumeMASettings } from './types';
 
-export const CANDLE_UP_COLOR = '#22c58b';
-export const CANDLE_DOWN_COLOR = '#f45b69';
+export const CANDLE_UP_COLOR = '#22ab94';
+export const CANDLE_DOWN_COLOR = '#f23645';
 export const SELECTED_QUOTE_REFRESH_MS = 3000;
 export const SELECTED_ENRICHED_REFRESH_MS = 15000;
 export const WATCHLIST_FAST_REFRESH_MS = 30000;
