@@ -342,12 +342,21 @@ export async function getQuote(env:Env,symbol:string){
   return enrichQuote(base,extended.get(symbol.toUpperCase()));
 }
 
-export async function getQuotes(env:Env,symbols:string[]){
-  const equitySymbols=symbols.filter(symbol=>!isYahooCryptoSymbol(symbol));
-  const extended=await yahooExtendedQuotes(equitySymbols).catch(()=>new Map<string,YahooQuote>());
+export async function getQuotesFast(env:Env,symbols:string[]){
   const results=await Promise.allSettled(symbols.map(symbol=>
     isYahooCryptoSymbol(symbol)?yahooQuote(symbol):finnhubQuote(env,symbol)
   ));
+  return results.flatMap(result=>result.status==='fulfilled'?[result.value]:[]);
+}
+
+export async function getQuotes(env:Env,symbols:string[]){
+  const equitySymbols=symbols.filter(symbol=>!isYahooCryptoSymbol(symbol));
+  const [extended,results]=await Promise.all([
+    yahooExtendedQuotes(equitySymbols).catch(()=>new Map<string,YahooQuote>()),
+    Promise.allSettled(symbols.map(symbol=>
+      isYahooCryptoSymbol(symbol)?yahooQuote(symbol):finnhubQuote(env,symbol)
+    )),
+  ]);
 
   return results.flatMap(result=>{
     if(result.status!=='fulfilled')return [];
@@ -565,9 +574,10 @@ export async function getCandles(env:Env,symbol:string,resolution:string,from:nu
 }
 
 export async function getInstrumentMeta(env:Env,symbol:string):Promise<InstrumentMeta>{
-  const alias=cryptoAlias(symbol);
-  if(alias||isYahooCryptoSymbol(symbol)){
-    const canonical=alias?.symbol||symbol.toUpperCase();
+  const key=symbol.toUpperCase();
+  const alias=cryptoAlias(key);
+  if(alias||isYahooCryptoSymbol(key)){
+    const canonical=alias?.symbol||key;
     const known=cryptoAlias(canonical);
     return{
       symbol:canonical,
@@ -579,31 +589,49 @@ export async function getInstrumentMeta(env:Env,symbol:string):Promise<Instrumen
     };
   }
 
+  const cacheKey=new Request(`https://tradingchill.local/instrument/${encodeURIComponent(key)}`);
+  try{
+    const cached=await caches.default.match(cacheKey);
+    if(cached)return cached.json() as Promise<InstrumentMeta>;
+  }catch{}
+
+  let value:InstrumentMeta;
   try{
     const profile=await finnhub<{
       ticker?:string;
       name?:string;
       logo?:string;
       finnhubIndustry?:string;
-    }>(env,'/stock/profile2',{symbol});
-    return{
-      symbol:symbol.toUpperCase(),
-      displaySymbol:(profile.ticker||symbol).toUpperCase(),
-      name:profile.name||symbol.toUpperCase(),
+    }>(env,'/stock/profile2',{symbol:key});
+    value={
+      symbol:key,
+      displaySymbol:(profile.ticker||key).toUpperCase(),
+      name:profile.name||key,
       logo:profile.logo||null,
       mark:null,
       type:profile.finnhubIndustry||'Equity',
     };
   }catch{
-    return{
-      symbol:symbol.toUpperCase(),
-      displaySymbol:symbol.toUpperCase(),
-      name:symbol.toUpperCase(),
+    value={
+      symbol:key,
+      displaySymbol:key,
+      name:key,
       logo:null,
       mark:null,
       type:'Market',
     };
   }
+
+  try{
+    await caches.default.put(cacheKey,new Response(JSON.stringify(value),{
+      headers:{
+        'content-type':'application/json',
+        'cache-control':'public, max-age=86400',
+      },
+    }));
+  }catch{}
+
+  return value;
 }
 
 export async function getInstrumentMetas(env:Env,symbols:string[]){
