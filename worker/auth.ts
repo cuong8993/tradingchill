@@ -1,6 +1,6 @@
 import type { Env } from './types';
 
-const PBKDF2_ITERATIONS=600000;
+const PBKDF2_ITERATIONS=100000;
 const SESSION_DAYS=30;
 const encoder=new TextEncoder();
 
