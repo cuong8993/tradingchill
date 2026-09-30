@@ -32,7 +32,14 @@ export default function App(){
   const [volumeMA,setVolumeMA]=useState<VolumeMASettings>(()=>({...DEFAULT_VOLUME_MA,...stored('tc.volumeMA',DEFAULT_VOLUME_MA)}));
   const [logScale,setLogScale]=useState(()=>stored('tc.logScale',false));
   const [theme,setTheme]=useState<'dark'|'light'>(()=>stored<'dark'|'light'>('tc.theme','dark'));
-  const [chartSettings,setChartSettings]=useState<ChartSettings>(()=>({...DEFAULT_CHART_SETTINGS,...stored('tc.chartSettings',DEFAULT_CHART_SETTINGS)}));
+  const [chartSettings,setChartSettings]=useState<ChartSettings>(()=>{
+    const saved={...DEFAULT_CHART_SETTINGS,...stored('tc.chartSettings',DEFAULT_CHART_SETTINGS)};
+    return {
+      ...saved,
+      upColor:saved.upColor==='#22c58b'?'#22ab94':saved.upColor,
+      downColor:saved.downColor==='#f45b69'?'#f23645':saved.downColor,
+    };
+  });
   const [watchlistWidth,setWatchlistWidth]=useState<number|null>(()=>stored<number|null>('tc.watchlistWidth.v2',null));
   const [watchlistHidden,setWatchlistHidden]=useState(false);
   const [fitSignal,setFitSignal]=useState(0);
@@ -99,7 +106,14 @@ export default function App(){
     if(preferences.indicators)setIndicators({...DEFAULT_INDICATORS,...preferences.indicators});
     if(preferences.volumeMA)setVolumeMA({...DEFAULT_VOLUME_MA,...preferences.volumeMA});
     if(typeof preferences.logScale==='boolean')setLogScale(preferences.logScale);
-    if(preferences.chartSettings)setChartSettings({...DEFAULT_CHART_SETTINGS,...preferences.chartSettings});
+    if(preferences.chartSettings){
+      const saved={...DEFAULT_CHART_SETTINGS,...preferences.chartSettings};
+      setChartSettings({
+        ...saved,
+        upColor:saved.upColor==='#22c58b'?'#22ab94':saved.upColor,
+        downColor:saved.downColor==='#f45b69'?'#f23645':saved.downColor,
+      });
+    }
     if(preferences.theme==='dark'||preferences.theme==='light')setTheme(preferences.theme);
 
     if(preferences.watchlistWidth==null)setWatchlistWidth(null);
