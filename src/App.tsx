@@ -209,6 +209,7 @@ export default function App(){
       symbols={watchlist}
       selected={selected}
       quotes={market.quotes}
+      instruments={market.instruments}
       mobileOpen={mobileWatch}
       onSelect={select}
       onRemove={remove}
@@ -220,7 +221,7 @@ export default function App(){
 
     <main className="workspace">
       {watchlistHidden&&<button className="restore-watchlist" title="Show watchlist" onClick={()=>setWatchlistHidden(false)}><PanelLeftOpen size={15}/></button>}
-      <MarketHeader symbol={selected} quote={quote}/>
+      <MarketHeader symbol={selected} quote={quote} instrument={market.instruments[selected]}/>
       <ChartToolbar
         timeframe={timeframe}
         favorites={timeframeFavorites}
