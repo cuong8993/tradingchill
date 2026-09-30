@@ -28,7 +28,7 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
   const [chartNote,setChartNote]=useState('');
   const [chartLoading,setChartLoading]=useState(true);
   const [chartError,setChartError]=useState('');
-  const [config,setConfig]=useState<{mode:'live'|'offline';chartProvider:'twelvedata'|'yahoo';database:boolean}>({mode:'offline',chartProvider:'yahoo',database:false});
+  const [config,setConfig]=useState<{mode:'live'|'offline';chartProvider:'twelvedata'|'yahoo';database:boolean;accounts:boolean}>({mode:'offline',chartProvider:'yahoo',database:false,accounts:false});
   const [searchResults,setSearchResults]=useState<SearchResult[]>([]);
   const [searchLoading,setSearchLoading]=useState(false);
 
