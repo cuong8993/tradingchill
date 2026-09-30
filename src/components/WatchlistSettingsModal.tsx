@@ -1,5 +1,5 @@
 import { RotateCcw, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { DEFAULT_WATCHLIST_SETTINGS } from '../config';
 import type { WatchlistSettings } from '../types';
 
@@ -91,7 +91,7 @@ export default function WatchlistSettingsModal({value,onClose,onApply}:Props){
         '--preview-height':`${draft.rowHeight}px`,
         '--preview-logo':`${draft.logoSize}px`,
         '--preview-font':`${draft.fontSize}px`,
-      } as React.CSSProperties}>
+      } as CSSProperties}>
         <span className="preview-logo">A</span>
         <b>AAPL</b>
         <span>329.40</span>
