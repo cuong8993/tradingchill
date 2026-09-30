@@ -9,7 +9,9 @@
   },
   "d1_databases": [
     {
-      "binding": "DB"
+      "binding": "DB",
+      "database_name": "tradingchill-db",
+      "database_id": "a5b5b1f1-af9f-4639-a4fc-1a10ea9ce50d"
     }
   ],
   "triggers": {
