@@ -1,6 +1,6 @@
 import { createSession, currentUser, deleteSession, hashNewPassword, normalizeEmail, validatePassword, verifyPassword } from './auth';
 import { ensureSchema } from './db';
-import { getCandles, getFastQuote, getInstrumentMetas, getQuote, getQuotes, searchLive } from './provider';
+import { getCandles, getFastQuote, getInstrumentMetas, getQuote, getQuotes, getQuotesFast, searchLive } from './provider';
 import { error, json, symbolOf, type Env } from './types';
 const MAX_QUOTES_PER_REQUEST=50;
 
@@ -141,6 +141,12 @@ export async function handleApi(request:Request,env:Env){
   if(request.method==='GET'&&p==='/api/quote'){
     if(!env.FINNHUB_API_KEY)return error('FINNHUB_API_KEY is not configured.',503);
     return json(await getQuote(env,symbolOf(u.searchParams.get('symbol'))));
+  }
+
+  if(request.method==='GET'&&p==='/api/quotes-fast'){
+    if(!env.FINNHUB_API_KEY)return error('FINNHUB_API_KEY is not configured.',503);
+    const symbols=(u.searchParams.get('symbols')||'').split(',').filter(Boolean).slice(0,MAX_QUOTES_PER_REQUEST).map(symbolOf);
+    return json(await getQuotesFast(env,symbols));
   }
 
   if(request.method==='GET'&&p==='/api/quotes'){
