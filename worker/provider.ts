@@ -6,6 +6,43 @@ const YAHOO_CHART_HOSTS=[
   'https://query1.finance.yahoo.com/v8/finance/chart',
   'https://query2.finance.yahoo.com/v8/finance/chart',
 ];
+
+export type InstrumentMeta={
+  symbol:string;
+  displaySymbol:string;
+  name:string;
+  logo:string|null;
+  mark:string|null;
+  type:string;
+};
+
+const CRYPTO_ALIASES:Record<string,{symbol:string;name:string;mark:string}>={
+  BTCUSD:{symbol:'BTC-USD',name:'Bitcoin / U.S. Dollar',mark:'₿'},
+  BITCOIN:{symbol:'BTC-USD',name:'Bitcoin / U.S. Dollar',mark:'₿'},
+  'BTC-USD':{symbol:'BTC-USD',name:'Bitcoin / U.S. Dollar',mark:'₿'},
+  ETHUSD:{symbol:'ETH-USD',name:'Ethereum / U.S. Dollar',mark:'Ξ'},
+  ETHEREUM:{symbol:'ETH-USD',name:'Ethereum / U.S. Dollar',mark:'Ξ'},
+  'ETH-USD':{symbol:'ETH-USD',name:'Ethereum / U.S. Dollar',mark:'Ξ'},
+  SOLUSD:{symbol:'SOL-USD',name:'Solana / U.S. Dollar',mark:'S'},
+  'SOL-USD':{symbol:'SOL-USD',name:'Solana / U.S. Dollar',mark:'S'},
+  DOGEUSD:{symbol:'DOGE-USD',name:'Dogecoin / U.S. Dollar',mark:'Ð'},
+  'DOGE-USD':{symbol:'DOGE-USD',name:'Dogecoin / U.S. Dollar',mark:'Ð'},
+  XRPUSD:{symbol:'XRP-USD',name:'XRP / U.S. Dollar',mark:'X'},
+  'XRP-USD':{symbol:'XRP-USD',name:'XRP / U.S. Dollar',mark:'X'},
+};
+
+function cryptoAlias(value:string){
+  const key=value.trim().toUpperCase().replace(/\//g,'');
+  return CRYPTO_ALIASES[key]||CRYPTO_ALIASES[value.trim().toUpperCase()]||null;
+}
+
+function isYahooCryptoSymbol(symbol:string){
+  return /^[A-Z0-9]+-USD$/.test(symbol.toUpperCase());
+}
+
+function displayCryptoSymbol(symbol:string){
+  return symbol.toUpperCase().replace('-','');
+}
 async function finnhub<T>(env:Env,path:string,params:Record<string,string|number>):Promise<T>{
   if(!env.FINNHUB_API_KEY)throw new Error('FINNHUB_API_KEY is not configured.');
   const url=new URL(FINNHUB+path);
@@ -150,6 +187,88 @@ async function yahooExtendedQuotes(symbols:string[]):Promise<Map<string,YahooQuo
   return map;
 }
 
+async function yahooQuote(symbol:string):Promise<Quote>{
+  let lastError:unknown;
+  for(const host of YAHOO_CHART_HOSTS){
+    try{
+      const url=new URL(`${host}/${encodeURIComponent(symbol)}`);
+      url.searchParams.set('range','2d');
+      url.searchParams.set('interval','1d');
+      url.searchParams.set('includePrePost','true');
+      const response=await fetch(url,{
+        headers:{'accept':'application/json,text/plain,*/*','user-agent':'Mozilla/5.0 TradingChill/1.0'},
+      });
+      if(response.status===429)throw new Error('Yahoo Finance rate limit reached.');
+      if(!response.ok)throw new Error(`Yahoo Finance chart service returned ${response.status}.`);
+
+      const data=await response.json() as {
+        chart?:{
+          error?:{description?:string}|null;
+          result?:Array<{
+            meta?:{
+              symbol?:string;
+              regularMarketPrice?:number;
+              regularMarketTime?:number;
+              chartPreviousClose?:number;
+              previousClose?:number;
+            };
+            timestamp?:number[];
+            indicators?:{quote?:Array<{
+              open?:Array<number|null>;
+              high?:Array<number|null>;
+              low?:Array<number|null>;
+              close?:Array<number|null>;
+            }>};
+          }>;
+        };
+      };
+      if(data.chart?.error)throw new Error(data.chart.error.description||'Yahoo Finance quote unavailable.');
+      const result=data.chart?.result?.[0];
+      const meta=result?.meta;
+      const q=result?.indicators?.quote?.[0];
+      if(!meta)throw new Error(`No quote for ${symbol}.`);
+
+      const closes=q?.close||[];
+      let index=closes.length-1;
+      while(index>=0&&(closes[index]==null||!Number.isFinite(closes[index])))index--;
+      const fallbackClose=index>=0?Number(closes[index]):0;
+      const price=Number.isFinite(meta.regularMarketPrice)?Number(meta.regularMarketPrice):fallbackClose;
+      if(!price)throw new Error(`No quote for ${symbol}.`);
+
+      const previousClose=Number.isFinite(meta.chartPreviousClose)?Number(meta.chartPreviousClose):
+        Number.isFinite(meta.previousClose)?Number(meta.previousClose):
+        index>0&&Number.isFinite(closes[index-1])?Number(closes[index-1]):price;
+
+      const open=index>=0&&Number.isFinite(q?.open?.[index])?Number(q?.open?.[index]):price;
+      const high=index>=0&&Number.isFinite(q?.high?.[index])?Number(q?.high?.[index]):price;
+      const low=index>=0&&Number.isFinite(q?.low?.[index])?Number(q?.low?.[index]):price;
+      const change=price-previousClose;
+      const changePercent=previousClose?change/previousClose*100:0;
+
+      return{
+        symbol:(meta.symbol||symbol).toUpperCase(),
+        price,
+        change,
+        changePercent,
+        high,
+        low,
+        open,
+        previousClose,
+        timestamp:Number(meta.regularMarketTime||result?.timestamp?.[index]||Math.floor(Date.now()/1000)),
+        marketState:'REGULAR',
+        regularClose:price,
+        extendedPrice:null,
+        extendedSession:null,
+        preMarketPrice:null,
+        postMarketPrice:null,
+      };
+    }catch(error){
+      lastError=error;
+    }
+  }
+  throw lastError instanceof Error?lastError:new Error(`No quote for ${symbol}.`);
+}
+
 async function finnhubQuote(env:Env,symbol:string):Promise<Quote>{
   const r=await finnhub<{c:number;d:number;dp:number;h:number;l:number;o:number;pc:number;t:number}>(env,'/quote',{symbol});
   if(!r.c)throw new Error(`No live quote for ${symbol}.`);
@@ -209,10 +328,13 @@ function enrichQuote(base:Quote,yahoo?:YahooQuote):Quote{
 }
 
 export async function getFastQuote(env:Env,symbol:string){
+  if(isYahooCryptoSymbol(symbol))return yahooQuote(symbol);
   return finnhubQuote(env,symbol);
 }
 
 export async function getQuote(env:Env,symbol:string){
+  if(isYahooCryptoSymbol(symbol))return yahooQuote(symbol);
+
   const [base,extended]=await Promise.all([
     finnhubQuote(env,symbol),
     yahooExtendedQuotes([symbol]).catch(()=>new Map<string,YahooQuote>()),
@@ -221,15 +343,16 @@ export async function getQuote(env:Env,symbol:string){
 }
 
 export async function getQuotes(env:Env,symbols:string[]){
-  const [baseResults,extended]=await Promise.all([
-    Promise.allSettled(symbols.map(symbol=>finnhubQuote(env,symbol))),
-    yahooExtendedQuotes(symbols).catch(()=>new Map<string,YahooQuote>()),
-  ]);
+  const equitySymbols=symbols.filter(symbol=>!isYahooCryptoSymbol(symbol));
+  const extended=await yahooExtendedQuotes(equitySymbols).catch(()=>new Map<string,YahooQuote>());
+  const results=await Promise.allSettled(symbols.map(symbol=>
+    isYahooCryptoSymbol(symbol)?yahooQuote(symbol):finnhubQuote(env,symbol)
+  ));
 
-  return baseResults.flatMap(result=>{
+  return results.flatMap(result=>{
     if(result.status!=='fulfilled')return [];
     const base=result.value;
-    return [enrichQuote(base,extended.get(base.symbol.toUpperCase()))];
+    return [isYahooCryptoSymbol(base.symbol)?base:enrichQuote(base,extended.get(base.symbol.toUpperCase()))];
   });
 }
 
@@ -441,6 +564,67 @@ export async function getCandles(env:Env,symbol:string,resolution:string,from:nu
   };
 }
 
+export async function getInstrumentMeta(env:Env,symbol:string):Promise<InstrumentMeta>{
+  const alias=cryptoAlias(symbol);
+  if(alias||isYahooCryptoSymbol(symbol)){
+    const canonical=alias?.symbol||symbol.toUpperCase();
+    const known=cryptoAlias(canonical);
+    return{
+      symbol:canonical,
+      displaySymbol:displayCryptoSymbol(canonical),
+      name:known?.name||`${displayCryptoSymbol(canonical).replace('USD','')} / U.S. Dollar`,
+      logo:null,
+      mark:known?.mark||canonical.slice(0,1),
+      type:'Crypto',
+    };
+  }
+
+  try{
+    const profile=await finnhub<{
+      ticker?:string;
+      name?:string;
+      logo?:string;
+      finnhubIndustry?:string;
+    }>(env,'/stock/profile2',{symbol});
+    return{
+      symbol:symbol.toUpperCase(),
+      displaySymbol:(profile.ticker||symbol).toUpperCase(),
+      name:profile.name||symbol.toUpperCase(),
+      logo:profile.logo||null,
+      mark:null,
+      type:profile.finnhubIndustry||'Equity',
+    };
+  }catch{
+    return{
+      symbol:symbol.toUpperCase(),
+      displaySymbol:symbol.toUpperCase(),
+      name:symbol.toUpperCase(),
+      logo:null,
+      mark:null,
+      type:'Market',
+    };
+  }
+}
+
+export async function getInstrumentMetas(env:Env,symbols:string[]){
+  const results=await Promise.allSettled(symbols.map(symbol=>getInstrumentMeta(env,symbol)));
+  return results.flatMap(result=>result.status==='fulfilled'?[result.value]:[]);
+}
+
 export async function searchLive(env:Env,q:string){
-  return finnhub<{result?:Array<{symbol:string;displaySymbol?:string;description?:string;type?:string}>}>(env,'/search',{q});
+  const normalized=q.trim().toUpperCase().replace(/\//g,'');
+  const alias=cryptoAlias(normalized);
+  const remote=await finnhub<{result?:Array<{symbol:string;displaySymbol?:string;description?:string;type?:string}>}>(env,'/search',{q})
+    .catch(()=>({result:[]}));
+
+  const result=remote.result||[];
+  if(alias&&!result.some(item=>item.symbol.toUpperCase()===alias.symbol)){
+    result.unshift({
+      symbol:alias.symbol,
+      displaySymbol:displayCryptoSymbol(alias.symbol),
+      description:alias.name,
+      type:'Crypto',
+    });
+  }
+  return {result};
 }
