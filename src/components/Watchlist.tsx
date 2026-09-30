@@ -1,6 +1,6 @@
 import { Activity, Columns3, PanelLeftClose, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { money, pct, QUOTE_BATCH_SIZE, stored } from '../config';
+import { money, QUOTE_BATCH_SIZE, stored } from '../config';
 import InstrumentIcon from './InstrumentIcon';
 import type { InstrumentMeta, Quote } from '../types';
 
