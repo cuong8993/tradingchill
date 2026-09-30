@@ -31,6 +31,7 @@ export default function App(){
   const [indicators,setIndicators]=useState<IndicatorSettings>(()=>({...DEFAULT_INDICATORS,...stored('mv.indicators',DEFAULT_INDICATORS)}));
   const [volumeMA,setVolumeMA]=useState<VolumeMASettings>(()=>({...DEFAULT_VOLUME_MA,...stored('tc.volumeMA',DEFAULT_VOLUME_MA)}));
   const [logScale,setLogScale]=useState(()=>stored('tc.logScale',false));
+  const [theme,setTheme]=useState<'dark'|'light'>(()=>stored<'dark'|'light'>('tc.theme','dark'));
   const [chartSettings,setChartSettings]=useState<ChartSettings>(()=>({...DEFAULT_CHART_SETTINGS,...stored('tc.chartSettings',DEFAULT_CHART_SETTINGS)}));
   const [watchlistWidth,setWatchlistWidth]=useState<number|null>(()=>stored<number|null>('tc.watchlistWidth.v2',null));
   const [watchlistHidden,setWatchlistHidden]=useState(false);
@@ -63,7 +64,8 @@ export default function App(){
     logScale,
     chartSettings,
     watchlistWidth,
-  }),[watchlist,selected,timeframe.label,timeframeFavorites,indicators,volumeMA,logScale,chartSettings,watchlistWidth]);
+    theme,
+  }),[watchlist,selected,timeframe.label,timeframeFavorites,indicators,volumeMA,logScale,chartSettings,watchlistWidth,theme]);
 
   const applyPreferences=useCallback((preferences:UserPreferences|null)=>{
     if(!preferences)return;
@@ -98,6 +100,7 @@ export default function App(){
     if(preferences.volumeMA)setVolumeMA({...DEFAULT_VOLUME_MA,...preferences.volumeMA});
     if(typeof preferences.logScale==='boolean')setLogScale(preferences.logScale);
     if(preferences.chartSettings)setChartSettings({...DEFAULT_CHART_SETTINGS,...preferences.chartSettings});
+    if(preferences.theme==='dark'||preferences.theme==='light')setTheme(preferences.theme);
 
     if(preferences.watchlistWidth==null)setWatchlistWidth(null);
     else if(Number.isFinite(preferences.watchlistWidth))setWatchlistWidth(Math.max(250,Math.min(560,Number(preferences.watchlistWidth))));
@@ -159,6 +162,7 @@ export default function App(){
   useEffect(()=>localStorage.setItem('mv.indicators',JSON.stringify(indicators)),[indicators]);
   useEffect(()=>localStorage.setItem('tc.volumeMA',JSON.stringify(volumeMA)),[volumeMA]);
   useEffect(()=>localStorage.setItem('tc.logScale',JSON.stringify(logScale)),[logScale]);
+  useEffect(()=>localStorage.setItem('tc.theme',JSON.stringify(theme)),[theme]);
   useEffect(()=>localStorage.setItem('tc.chartSettings',JSON.stringify(chartSettings)),[chartSettings]);
   useEffect(()=>localStorage.setItem('tc.timeframeFavorites',JSON.stringify(timeframeFavorites)),[timeframeFavorites]);
   useEffect(()=>{
@@ -179,19 +183,29 @@ export default function App(){
   const select=(s:string)=>{setSelected(s);setMobileWatch(false)};
   const selectFromDropdown=(s:string)=>{setSelected(s);setSearchOpen(false);setSearchText('')};
   const toggleTimeframeFavorite=(label:string)=>setTimeframeFavorites(current=>current.includes(label)?current.filter(x=>x!==label):[...current,label]);
+  const toggleTheme=()=>{
+    const next=theme==='dark'?'light':'dark';
+    setTheme(next);
+    setChartSettings(current=>({
+      ...current,
+      backgroundColor:next==='dark'?'#0c111b':'#ffffff',
+      gridColor:next==='dark'?'#151c28':'#e5e9f0',
+    }));
+  };
   const shellStyle={
     '--watchlist-width':watchlistHidden?'0px':watchlistWidth==null?'clamp(280px,20vw,360px)':`${Math.round(watchlistWidth)}px`,
     '--green':chartSettings.upColor,
     '--red':chartSettings.downColor,
   } as CSSProperties;
 
-  return <div className={`app-shell ${watchlistHidden?'watchlist-hidden':''}`} style={shellStyle}>
+  return <div className={`app-shell ${watchlistHidden?'watchlist-hidden':''}`} data-theme={theme} style={shellStyle}>
     <TopBar
       selected={selected}
       watchlist={watchlist}
       mode={market.config.mode}
       hasAlerts={alertState.alerts.some(a=>a.active)}
       user={accountUser}
+      theme={theme}
       searchOpen={searchOpen}
       searchText={searchText}
       results={market.searchResults}
@@ -203,6 +217,7 @@ export default function App(){
       onAdd={add}
       onAlerts={()=>setAlertsOpen(v=>!v)}
       onAccount={()=>setAccountOpen(true)}
+      onTheme={toggleTheme}
     />
 
     <Watchlist
