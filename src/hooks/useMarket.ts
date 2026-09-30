@@ -6,7 +6,7 @@ import {
   SELECTED_QUOTE_REFRESH_MS,
   WATCHLIST_REFRESH_MS,
 } from '../config';
-import type { Candle, CandleSource, Quote, SearchResult, Timeframe } from '../types';
+import type { Candle, CandleSource, InstrumentMeta, Quote, SearchResult, Timeframe } from '../types';
 
 function mergeFastQuote(previous:Quote|undefined,next:Quote):Quote{
   if(!previous)return next;
@@ -30,6 +30,7 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
   const [chartError,setChartError]=useState('');
   const [config,setConfig]=useState<{mode:'live'|'offline';chartProvider:'twelvedata'|'yahoo';database:boolean;accounts:boolean}>({mode:'offline',chartProvider:'yahoo',database:false,accounts:false});
   const [searchResults,setSearchResults]=useState<SearchResult[]>([]);
+  const [instruments,setInstruments]=useState<Record<string,InstrumentMeta>>({});
   const [searchLoading,setSearchLoading]=useState(false);
 
   useEffect(()=>{ api.config().then(setConfig).catch(()=>{}); },[]);
@@ -47,6 +48,21 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
     const id=setInterval(()=>void loadQuotes(),WATCHLIST_REFRESH_MS);
     return()=>clearInterval(id);
   },[loadQuotes]);
+  useEffect(()=>{
+    if(!watchlist.length){setInstruments({});return;}
+    let active=true;
+    void api.instruments(watchlist)
+      .then(items=>{
+        if(!active)return;
+        setInstruments(previous=>({
+          ...previous,
+          ...Object.fromEntries(items.map(item=>[item.symbol,item]))
+        }));
+      })
+      .catch(()=>{});
+    return()=>{active=false};
+  },[watchlist]);
+
 
   const loadSelectedQuote=useCallback(async()=>{
     try{
@@ -141,5 +157,5 @@ export function useMarket(watchlist:string[], selected:string, timeframe:Timefra
     finally{setSearchLoading(false);}
   },[]);
 
-  return {quotes,candles,chartSource,chartNote,chartLoading,chartError,config,searchResults,searchLoading,search,loadCandles};
+  return {quotes,instruments,candles,chartSource,chartNote,chartLoading,chartError,config,searchResults,searchLoading,search,loadCandles};
 }
